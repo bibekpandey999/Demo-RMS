@@ -9,7 +9,11 @@ interface OrderItem {
   itemPrice: number;
   quantity: number;
 }
+<<<<<<< HEAD
 
+=======
+   
+>>>>>>> c5844e8eebce017214216a096ca4d2e7c94b4626
 interface Order {
   id: string;
   _id: string;
