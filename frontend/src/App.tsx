@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 import { Patient, Medicine, Sale, Supplier, PurchaseOrder, StockMovement } from './types';
-import { TRANSLATIONS } from './translations';
+import { TRANSLATIONS } from './translations'; 
 import { LocalDB } from './db';
 import { Utensils } from "lucide-react";
 import Tables from './components/Table';
