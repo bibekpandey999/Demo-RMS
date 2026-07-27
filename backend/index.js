@@ -25,22 +25,7 @@ const allowedOrigins = [
 ];
 // CORS and JSON parsing set up immediately, not gated on DB connection
 app.use(cors({
-    origin: function (origin, callback) {
-        // allow requests with no origin (like Postman, curl, mobile apps)
-        if (!origin) return callback(null, true);
-
-        // allow your stable production domain
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-
-        // allow ANY Vercel preview deploy under your project
-       if (/^https:\/\/rms-.*-ramitnpns-projects\.vercel\.app$/.test(origin)) {
-    return callback(null, true);
-}
-
-        callback(new Error("Not allowed by CORS: " + origin));
-    },
+    origin: true, // Automatically allows any requesting frontend origin
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
