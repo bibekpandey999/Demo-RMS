@@ -13,6 +13,7 @@ import { Utensils } from "lucide-react";
 import Tables from './components/Table';
 import KitchenDisplay from './components/KitchenDisplay';
 import CreateBill from './components/CreateBill';
+import TotalOrder from './components/DailyOrderItem';
 
 import Dashboard from './components/Dashboard';
 import CreateOrder from './components/CreateOrder';
@@ -37,7 +38,7 @@ type StaffRole =
   | 'Kitchen Staff'
   | 'Cashier';
 
-type AppView = 'dashboard' | 'pos' | 'inventory' | 'billing' | 'staff' | 'settings' | 'orders' | 'tables' | 'kitchen' | 'createbill';
+  type AppView = 'dashboard' | 'pos' | 'inventory' | 'billing' | 'staff' | 'settings' | 'orders' | 'tables' | 'kitchen' | 'createbill' | 'totalorder';
 
 interface RoleConfig {
   label: StaffRole;
@@ -53,7 +54,7 @@ interface RoleConfig {
 const ROLE_ACCESS: Record<StaffRole, RoleConfig> = {
   Manager: {
     label: 'Manager',
-    pages: ['dashboard', 'pos', 'inventory', 'billing', 'staff', 'settings', 'orders', 'tables', 'kitchen', 'createbill'],
+    pages: ['dashboard', 'pos', 'inventory', 'billing', 'staff', 'settings', 'orders', 'tables', 'kitchen', 'createbill','totalorder'],
     defaultView: 'dashboard',
   },
   Waiter: {
@@ -68,7 +69,7 @@ const ROLE_ACCESS: Record<StaffRole, RoleConfig> = {
   },
   Cashier: {
     label: 'Cashier',
-    pages: ['createbill', 'tables', 'billing'],
+    pages: ['createbill', 'tables', 'billing','totalorder'],
     defaultView: 'createbill',
   },
 };
@@ -627,6 +628,20 @@ export default function App() {
               </button>
             )}
 
+            {canAccess('totalorder') && (
+  <button
+    onClick={() => { setCurrentView('totalorder'); setSelectedPatient(null); }}
+    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+      currentView === 'totalorder'
+        ? 'bg-teal-50 text-teal-800'
+        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+    }`}
+  >
+    <ClipboardList className={`h-4.5 w-4.5 ${currentView === 'totalorder' ? 'text-teal-600' : 'text-gray-400'}`} />
+    <span>{lang === 'en' ? 'Total Sales' : 'कुल बिक्री'}</span>
+  </button>
+)}
+
             {canAccess('createbill') && (
               <button
                 onClick={() => { setCurrentView('createbill'); setSelectedPatient(null); }}
@@ -838,6 +853,9 @@ export default function App() {
               onViewInvoice={(sale) => setInvoiceToView(sale)}
             />
           )}
+          {currentView === 'totalorder' && canAccess('totalorder') && (
+  <TotalOrder restaurantId={activePharmacyName} />
+)}
 
           {currentView === 'kitchen' && canAccess('kitchen') && (
             <KitchenDisplay />
