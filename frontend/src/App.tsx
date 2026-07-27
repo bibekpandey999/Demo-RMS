@@ -596,8 +596,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans text-gray-800 antialiased" id="app-root">
 
-      {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className="hidden md:flex md:w-64 bg-white border-r border-gray-200 flex-col justify-between shrink-0" id="app-sidebar">
+      {/* SIDEBAR NAVIGATION PANEL — sticky so it stays put while <main> scrolls */}
+      <aside className="hidden md:flex md:w-64 md:sticky md:top-0 md:h-screen md:overflow-y-auto bg-white border-r border-gray-200 flex-col justify-between shrink-0" id="app-sidebar">
         <div className="p-5 flex flex-col space-y-6">
 
           {/* Restaurant Brand Identity */}
