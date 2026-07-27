@@ -6,7 +6,7 @@ interface OrderItem {
   quantity: number;
   price?: number;
 }
- 
+  
 interface Order {
   id: string;
   _id: string;
