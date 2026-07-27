@@ -35,9 +35,9 @@ app.use(cors({
         }
 
         // allow ANY Vercel preview deploy under your project
-        if (/^https:\/\/pharmacy-management-system-.*-ramitnpns-projects\.vercel\.app$/.test(origin)) {
-            return callback(null, true);
-        }
+       if (/^https:\/\/rms-.*-ramitnpns-projects\.vercel\.app$/.test(origin)) {
+    return callback(null, true);
+}
 
         callback(new Error("Not allowed by CORS: " + origin));
     },
