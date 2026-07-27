@@ -36,7 +36,7 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
     fetchOrders();
   }, [restaurantId]);
 
-  const API_BASE_URL = 'https://rms-0wk0.onrender.com/api';
+  const API_BASE_URL = 'https://rms-0wk0.onrender.com/api'; 
 
 const fetchOrders = async () => {
   setLoading(true);
