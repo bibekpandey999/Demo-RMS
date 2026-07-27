@@ -48,8 +48,9 @@ const fetchOrders = async () => {
     const res = await fetch(url);
     const data = await res.json();
     if (data.success) {
-      setOrders(data.data);
-    } else {
+  console.log("Raw orders:", data.data.map(o => o.orderStatus));
+  setOrders(data.data);
+}else {
       setError(data.message || "Failed to fetch orders.");
     }
   } catch (err) {
@@ -61,15 +62,14 @@ const fetchOrders = async () => {
 };
 
   // Only completed & served orders
-  const completedOrders = useMemo(
-    () =>
-      orders.filter(
-        (o) =>
-          o.orderStatus?.toLowerCase() === "completed" ||
-          o.orderStatus?.toLowerCase() === "served"
-      ),
-    [orders]
-  );
+const completedOrders = useMemo(
+  () =>
+    orders.filter((o) => {
+      const status = o.orderStatus?.toLowerCase().trim();
+      return status && !["cancelled", "canceled", "pending"].includes(status);
+    }),
+  [orders]
+);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
