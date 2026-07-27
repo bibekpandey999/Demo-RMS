@@ -1,12 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const conectDb = require("./connectDb");
-const userModule = require("./models/user");
-const Inventory = require("./models/inventoryAndPOs");
+const Menu = require("./models/menu");
+const Order = require("./models/createOrder");
+const Table = require("./models/table");
 const Bill = require("./models/bill");
 const PharmacyUser = require("./models/login");
 const PharmacyStaff = require("./models/loginStaff");
-const EMR = require("./models/emr");
 const session = require('express-session');
 const MongoStore = require('connect-mongo').default || require('connect-mongo');
 const mongoose = require('mongoose');
@@ -20,7 +20,7 @@ app.set('trust proxy', 1);
 
 
 const allowedOrigins = [
-  "https://pharmacy-management-system-ramitnpns-projects.vercel.app", // replace with YOUR actual stable production domain
+  "http://localhost:3000", // replace with YOUR actual stable production domain
 ];
 // CORS and JSON parsing set up immediately, not gated on DB connection
 app.use(cors({
@@ -95,438 +95,33 @@ const parseArrayOrString = (arrayVal, stringVal, fallback = "None") => {
     return getValue(stringVal, fallback);
 };
 
+
+
+
 // ==========================================
-// 🏥 PATIENTS ROUTES
+// Menu
 // ==========================================
 
-// POST Route to Save Patient Details
-app.post("/api/patients", async (req, res) => {
+app.post("/api/menu", async (req, res) => {
     try {
         const formData = req.body;
-      
-
-        const newPatient = await userModule.create({
-            name: getValue(formData.name || formData.fullName, "Unknown Patient"),
-            gender: getValue(formData.gender, "Not Specified"),
-            age: getValue(formData.age, ""),
-            dob: getValue(formData.dob, "YYYY-MM-DD"),
-            phoneNumber: getValue(formData.phoneNumber || formData.phone, "0000000000"),
-            address: getValue(formData.address, ""),
-            nationalIdentityNumber: getValue(formData.nationalIdentityNumber || formData.nationalId, ""),
-            bloodGroup: getValue(formData.bloodGroup || formData.bloodType, ""),
-            language: getValue(formData.language || formData.preferredLanguage, ""),
-            drugSensitivities: parseArrayOrString(formData.allergies, formData.drugSensitivities, "None"),
-            chronicConditions: parseArrayOrString(formData.chronicConditions, formData.chronicConditions, "None"),
-            emergencyContactPerson: getValue(formData.emergencyContactPerson || formData.emergencyContactName, ""),
-            emergencyContactPhone: getValue(formData.emergencyContactPhone, ""),
-            pharmacyId: getValue(formData.pharmacyId, ""),
-            weight: getValue(formData.weight, "")
-        });
-
-        return res.status(201).json({ 
-            success: true, 
-            message: "Patient record saved successfully!", 
-            data: newPatient 
-        });
-
-    } catch (error) {
-        console.error("🔴 DATABASE WRITE CRASH:", error);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Failed to write patient data to MongoDB.",
-            error: error.message 
-        });
-    }
-});
-
-// GET Route to fetch all patients
-app.get("/api/patients", async (req, res) => {
-    console.log("DEBUG: Request received for /api/patients");
-    try {
-        const dbPatients = await userModule.find({});
-
-        const patients = dbPatients.map(patient => {
-            const allergiesArray = (patient.drugSensitivities && patient.drugSensitivities !== 'None') 
-                ? patient.drugSensitivities.split(', ') 
-                : [];
-            
-            const chronicArray = (patient.chronicConditions && patient.chronicConditions !== 'None') 
-                ? (typeof patient.chronicConditions === 'string' ? patient.chronicConditions.split(', ') : patient.chronicConditions)
-                : [];
-
-            return {
-                id: patient._id,
-                _id: patient._id,
-                name: patient.name,
-                fullName: patient.name, 
-                phone: patient.phoneNumber,
-                phoneNumber: patient.phoneNumber,
-                gender: patient.gender,
-                age: patient.age,
-                dob: patient.dob,
-                address: patient.address,
-                nationalId: patient.nationalIdentityNumber,
-                nationalIdentityNumber: patient.nationalIdentityNumber,
-                bloodType: patient.bloodGroup,
-                bloodGroup: patient.bloodGroup,
-                preferredLanguage: patient.language,
-                language: patient.language,
-                drugSensitivities: patient.drugSensitivities,
-                allergies: allergiesArray, 
-                chronicConditions: chronicArray, 
-                emergencyContactName: patient.emergencyContactPerson,
-                emergencyContactPerson: patient.emergencyContactPerson,
-                emergencyContactPhone: patient.emergencyContactPhone,
-                pharmacyId: patient.pharmacyId,
-                weight: patient.weight,
-                createdAt: patient.createdAt || new Date().toISOString()
-            };
-        });
-
-        return res.status(200).json({
-            success: true,
-            count: patients.length,
-            data: patients 
-        });
-    } catch (error) {
-        console.error("🔴 Backend fetch failed:", error);
-        return res.status(500).json({ success: false, message: "Error fetching clinic records." });
-    }
-});
-
-// PUT Route to Update Patient Details by ID
-app.put("/api/patients/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        const formData = req.body;
-        console.log(`=== UPDATING PATIENT ID: ${id} ===`);
-
-        const updatedFields = {
-            name: getValue(formData.name || formData.fullName, "Unknown Patient"),
-            gender: getValue(formData.gender, "Not Specified"),
-            age: getValue(formData.age, ""),
-            dob: getValue(formData.dob, "YYYY-MM-DD"),
-            phoneNumber: getValue(formData.phoneNumber || formData.phone, "0000000000"),
-            address: getValue(formData.address, ""),
-            nationalIdentityNumber: getValue(formData.nationalIdentityNumber || formData.nationalId, ""),
-            bloodGroup: getValue(formData.bloodGroup || formData.bloodType, ""),
-            language: getValue(formData.language || formData.preferredLanguage, ""),
-            drugSensitivities: parseArrayOrString(formData.allergies, formData.drugSensitivities, "None"),
-            chronicConditions: parseArrayOrString(formData.chronicConditions, formData.chronicConditions, "None"),
-            emergencyContactPerson: getValue(formData.emergencyContactPerson || formData.emergencyContactName, ""),
-            emergencyContactPhone: getValue(formData.emergencyContactPhone, ""),
-            pharmacyId: getValue(formData.pharmacyId, ""),
-            weight: getValue(formData.weight, "")
-        };
-
-        const updatedPatient = await userModule.findByIdAndUpdate(
-            id,
-            { $set: updatedFields },
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedPatient) {
-            return res.status(404).json({ success: false, message: "Patient record not found." });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "Patient record updated successfully!",
-            data: updatedPatient
-        });
-
-    } catch (error) {
-        console.error("🔴 Backend update failed:", error);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Error updating patient record.",
-            error: error.message 
-        });
-    }
-});
-
-// DELETE Route to Remove a Patient Record by ID
-app.delete("/api/patients/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        console.log(`=== DELETING PATIENT ID: ${id} ===`);
-
-        const deletedPatient = await userModule.findByIdAndDelete(id);
-
-        if (!deletedPatient) {
-            return res.status(404).json({ success: false, message: "Patient record not found." });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "Patient record deleted successfully!",
-            deletedPatientId: id
-        });
-    } catch (error) {
-        console.error("🔴 Backend deletion failed:", error);
-        return res.status(500).json({ success: false, message: "Error deleting patient record." });
-    }
-});
-
-
-
-
-// ==========================================
-// 💊 EMR
-// ==========================================
-
-app.post("/api/emr", async (req, res) => {
-    try {
-        const formData = req.body;
-
-        if (!formData.patientId || !formData.pharmacyId || !formData.visitDate || !formData.chiefComplaint) {
-            return res.status(400).json({
-                success: false,
-                message: "patientId, pharmacyId, visitDate and chiefComplaint are required."
-            });
-        }
-
-        const newRecord = await EMR.create({
-            patientId: getValue(formData.patientId, ""),
-            pharmacyId: getValue(formData.pharmacyId, ""),
-            visitDate: getValue(formData.visitDate, ""),
-            chiefComplaint: getValue(formData.chiefComplaint, ""),
-            diagnosis: getValue(formData.diagnosis, ""),
-            symptoms: Array.isArray(formData.symptoms) ? formData.symptoms : [],
-            vitals: {
-                bp: getValue(formData.vitals?.bp, ""),
-                temp: getValue(formData.vitals?.temp, ""),
-                pulse: getValue(formData.vitals?.pulse, ""),
-                weight: getValue(formData.vitals?.weight, ""),
-                spo2: getValue(formData.vitals?.spo2, ""),
-            },
-            prescription: getValue(formData.prescription, ""),
-            labTests: Array.isArray(formData.labTests) ? formData.labTests : [],
-            notes: getValue(formData.notes, ""),
-            followUpDate: getValue(formData.followUpDate, ""),
-            doctorName: getValue(formData.doctorName, ""),
-        });
-
-        return res.status(201).json({
-            success: true,
-            message: "EMR record saved successfully!",
-            data: newRecord
-        });
-
-    } catch (error) {
-        console.error("🔴 DATABASE WRITE CRASH:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to write EMR data to MongoDB.",
-            error: error.message
-        });
-    }
-});
-
-app.get("/api/emr", async (req, res) => {
-    try {
-        const dbRecords = await EMR.find({}).sort({ visitDate: -1 });
-
-        const records = dbRecords.map(record => ({
-            id: record._id,
-            _id: record._id,
-            patientId: record.patientId,
-            pharmacyId: record.pharmacyId,
-            visitDate: record.visitDate,
-            chiefComplaint: record.chiefComplaint,
-            diagnosis: record.diagnosis,
-            symptoms: record.symptoms || [],
-            vitals: record.vitals || {},
-            prescription: record.prescription,
-            labTests: record.labTests || [],
-            notes: record.notes,
-            followUpDate: record.followUpDate,
-            doctorName: record.doctorName,
-            createdAt: record.createdAt || new Date().toISOString()
-        }));
-
-        return res.status(200).json({
-            success: true,
-            count: records.length,
-            data: records
-        });
-    } catch (error) {
-        console.error("🔴 Backend fetch failed:", error);
-        return res.status(500).json({ success: false, message: "Error fetching EMR records." });
-    }
-});
-
-app.get("/api/emr/patient/:patientId", async (req, res) => {
-    try {
-        const { patientId } = req.params;
-        const dbRecords = await EMR.find({ patientId }).sort({ visitDate: -1 });
-
-        const records = dbRecords.map(record => ({
-            id: record._id,
-            _id: record._id,
-            patientId: record.patientId,
-            pharmacyId: record.pharmacyId,
-            visitDate: record.visitDate,
-            chiefComplaint: record.chiefComplaint,
-            diagnosis: record.diagnosis,
-            symptoms: record.symptoms || [],
-            vitals: record.vitals || {},
-            prescription: record.prescription,
-            labTests: record.labTests || [],
-            notes: record.notes,
-            followUpDate: record.followUpDate,
-            doctorName: record.doctorName,
-            createdAt: record.createdAt || new Date().toISOString()
-        }));
-
-        return res.status(200).json({
-            success: true,
-            count: records.length,
-            data: records
-        });
-    } catch (error) {
-        console.error("🔴 Backend fetch failed:", error);
-        return res.status(500).json({ success: false, message: "Error fetching patient EMR records." });
-    }
-});
-
-app.get("/api/emr/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        const record = await EMR.findById(id);
-
-        if (!record) {
-            return res.status(404).json({ success: false, message: "EMR record not found." });
-        }
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                id: record._id,
-                _id: record._id,
-                patientId: record.patientId,
-                pharmacyId: record.pharmacyId,
-                visitDate: record.visitDate,
-                chiefComplaint: record.chiefComplaint,
-                diagnosis: record.diagnosis,
-                symptoms: record.symptoms || [],
-                vitals: record.vitals || {},
-                prescription: record.prescription,
-                labTests: record.labTests || [],
-                notes: record.notes,
-                followUpDate: record.followUpDate,
-                doctorName: record.doctorName,
-                createdAt: record.createdAt || new Date().toISOString()
-            }
-        });
-    } catch (error) {
-        console.error("🔴 Backend fetch failed:", error);
-        return res.status(500).json({ success: false, message: "Error fetching EMR record." });
-    }
-});
-
-app.put("/api/emr/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        const formData = req.body;
-
-        const updatedFields = {
-            visitDate: getValue(formData.visitDate, ""),
-            chiefComplaint: getValue(formData.chiefComplaint, ""),
-            diagnosis: getValue(formData.diagnosis, ""),
-            symptoms: Array.isArray(formData.symptoms) ? formData.symptoms : [],
-            vitals: {
-                bp: getValue(formData.vitals?.bp, ""),
-                temp: getValue(formData.vitals?.temp, ""),
-                pulse: getValue(formData.vitals?.pulse, ""),
-                weight: getValue(formData.vitals?.weight, ""),
-                spo2: getValue(formData.vitals?.spo2, ""),
-            },
-            prescription: getValue(formData.prescription, ""),
-            labTests: Array.isArray(formData.labTests) ? formData.labTests : [],
-            notes: getValue(formData.notes, ""),
-            followUpDate: getValue(formData.followUpDate, ""),
-            doctorName: getValue(formData.doctorName, ""),
-        };
-
-        const updatedRecord = await EMR.findByIdAndUpdate(
-            id,
-            { $set: updatedFields },
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedRecord) {
-            return res.status(404).json({ success: false, message: "EMR record not found." });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "EMR record updated successfully!",
-            data: updatedRecord
-        });
-
-    } catch (error) {
-        console.error("🔴 Backend update failed:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Error updating EMR record.",
-            error: error.message
-        });
-    }
-});
-
-app.delete("/api/emr/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        const deletedRecord = await EMR.findByIdAndDelete(id);
-
-        if (!deletedRecord) {
-            return res.status(404).json({ success: false, message: "EMR record not found." });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "EMR record deleted successfully!",
-            deletedRecordId: id
-        });
-    } catch (error) {
-        console.error("🔴 Backend deletion failed:", error);
-        return res.status(500).json({ success: false, message: "Error deleting EMR record." });
-    }
-});
-
-
-
-// ==========================================
-// 💊 INVENTORY ROUTES
-// ==========================================
-
-// POST: Add Medicine to Inventory safely with Clean Duplicate Error Catching
-app.post("/api/inventory", async (req, res) => {
-    try {
-        const formData = req.body;
-        console.log("=== INCOMING MEDICINE DATA ===");
+        console.log("=== INCOMING MENU ITEM DATA ===");
         console.log(formData);
 
-        const newMedicine = await Inventory.create({
-            medicineBrandName: getValue(formData.medicineBrandName, "Unknown Brand"),
-            genericMoleculeName: getValue(formData.genericMoleculeName, "Unknown Molecule"),
-            categoryType: getValue(formData.categoryType, "Uncategorized"),
-            dosageStrength: getValue(formData.dosageStrength, "N/A"),
-            purchaseUnitCost: parseNum(getValue(formData.purchaseUnitCost, 0)),
-            retailPrice: parseNum(getValue(formData.retailPrice || formData.retailRetailPrice, 0)),
-            initialStockQty: parseNum(getValue(formData.initialStockQty, 0)),
-            reorderThresholdAlert: parseNum(getValue(formData.reorderThresholdAlert, 10)),
+        const newMenuItem = await Menu.create({
+            itemName: getValue(formData.itemName, "Unknown Dish"),
+            description: getValue(formData.description, "No description provided"),
+            category: getValue(formData.category, "Uncategorized"),
+            price: parseNum(getValue(formData.price, 0)),
+            status: getValue(formData.status, "Available"),
             skuBarcodeReference: getValue(formData.skuBarcodeReference, ""),
-            expirationDate: getValue(formData.expirationDate, null),
-            supplierDistributor: getValue(formData.supplierDistributor, "Unknown Supplier"),
-            pharmacyId: getValue(formData.pharmacyId, "")
+            restaurantId: getValue(formData.restaurantId, "")
         });
 
         return res.status(201).json({ 
             success: true, 
-            message: "Medicine item added to inventory successfully!", 
-            data: newMedicine 
+            message: "Menu item added successfully!", 
+            data: newMenuItem 
         });
 
     } catch (error) {
@@ -537,43 +132,37 @@ app.post("/api/inventory", async (req, res) => {
             const duplicateField = Object.keys(error.keyValue)[0];
             return res.status(400).json({
                 success: false,
-                message: `An inventory item with this ${duplicateField} ("${error.keyValue[duplicateField]}") already exists! Please use a unique value.`
+                message: `A menu item with this ${duplicateField} ("${error.keyValue[duplicateField]}") already exists! Please use a unique value.`
             });
         }
 
         return res.status(500).json({ 
             success: false, 
-            message: "Failed to save item to inventory database.",
+            message: "Failed to save menu item to database.",
             error: error.message 
         });
     }
 });
 
-// GET: Fetch All Medicines
-// GET: Fetch All Medicines (scoped to pharmacyId if provided)
-app.get("/api/inventory", async (req, res) => {
+// GET: Fetch All Menu Items (scoped to restaurantId if provided)
+app.get("/api/menu", async (req, res) => {
     try {
-        const { pharmacyId } = req.query;
-        const filter = pharmacyId ? { pharmacyId } : {};
+        const { restaurantId } = req.query;
+        const filter = restaurantId ? { restaurantId } : {};
 
-        const dbItems = await Inventory.find(filter).sort({ createdAt: -1 });
+        const dbItems = await Menu.find(filter).sort({ createdAt: -1 });
 
         const items = dbItems.map(item => {
             return {
                 id: item._id,
                 _id: item._id,
-                medicineBrandName: item.medicineBrandName,
-                genericMoleculeName: item.genericMoleculeName,
-                categoryType: item.categoryType,
-                dosageStrength: item.dosageStrength,
-                purchaseUnitCost: item.purchaseUnitCost,
-                retailPrice: item.retailPrice,
-                initialStockQty: parseNum(item.initialStockQty || 0), 
-                reorderThresholdAlert: parseNum(item.reorderThresholdAlert || 0),
+                itemName: item.itemName,
+                description: item.description,
+                category: item.category,
+                price: item.price,
+                status: item.status,
                 skuBarcodeReference: item.skuBarcodeReference,
-                expirationDate: item.expirationDate,
-                supplierDistributor: item.supplierDistributor,
-                pharmacyId: item.pharmacyId,
+                restaurantId: item.restaurantId,
                 createdAt: item.createdAt || new Date().toISOString()
             };
         });
@@ -585,44 +174,40 @@ app.get("/api/inventory", async (req, res) => {
         });
     } catch (error) {
         console.error("🔴 Backend fetch failed:", error);
-        return res.status(500).json({ success: false, message: "Error fetching inventory data." });
+        return res.status(500).json({ success: false, message: "Error fetching menu data." });
     }
 });
-// PUT: Update an Existing Medicine by ID
-app.put("/api/inventory/:id", async (req, res) => {
+
+// PUT: Update an Existing Menu Item by ID
+app.put("/api/menu/:id", async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
-        console.log(`=== UPDATING MEDICINE ID: ${id} ===`);
+        console.log(`=== UPDATING MENU ITEM ID: ${id} ===`);
 
         const updatedFields = {
-            medicineBrandName: getValue(updateData.medicineBrandName, "Unknown Brand"),
-            genericMoleculeName: getValue(updateData.genericMoleculeName, "Unknown Molecule"),
-            categoryType: getValue(updateData.categoryType, "Uncategorized"),
-            dosageStrength: getValue(updateData.dosageStrength, "N/A"),
-            purchaseUnitCost: parseNum(getValue(updateData.purchaseUnitCost, 0)),
-            retailPrice: parseNum(getValue(updateData.retailPrice || updateData.retailRetailPrice, 0)),
-            initialStockQty: parseNum(getValue(updateData.initialStockQty, 0)),
-            reorderThresholdAlert: parseNum(getValue(updateData.reorderThresholdAlert, 10)),
+            itemName: getValue(updateData.itemName, "Unknown Dish"),
+            description: getValue(updateData.description, "No description provided"),
+            category: getValue(updateData.category, "Uncategorized"),
+            price: parseNum(getValue(updateData.price, 0)),
+            status: getValue(updateData.status, "Available"),
             skuBarcodeReference: getValue(updateData.skuBarcodeReference, ""),
-            expirationDate: getValue(updateData.expirationDate, null),
-            supplierDistributor: getValue(updateData.supplierDistributor, "Unknown Supplier"),
-            pharmacyId: getValue(updateData.pharmacyId, "")
+            restaurantId: getValue(updateData.restaurantId, "")
         };
 
-        const updatedItem = await Inventory.findByIdAndUpdate(
+        const updatedItem = await Menu.findByIdAndUpdate(
             id, 
             { $set: updatedFields }, 
             { new: true, runValidators: true }
         );
 
         if (!updatedItem) {
-            return res.status(404).json({ success: false, message: "Item not found in inventory." });
+            return res.status(404).json({ success: false, message: "Menu item not found." });
         }
 
         return res.status(200).json({
             success: true,
-            message: "Inventory item updated successfully!",
+            message: "Menu item updated successfully!",
             data: updatedItem
         });
     } catch (error) {
@@ -638,34 +223,309 @@ app.put("/api/inventory/:id", async (req, res) => {
 
         return res.status(500).json({ 
             success: false, 
-            message: "Error updating inventory entry.",
+            message: "Error updating menu entry.",
             error: error.message 
         });
     }
 });
 
-// DELETE: Remove a Medicine by ID
-app.delete("/api/inventory/:id", async (req, res) => {
+// DELETE: Remove a Menu Item by ID
+app.delete("/api/menu/:id", async (req, res) => {
     try {
         const { id } = req.params;
-        console.log(`=== DELETING MEDICINE ID: ${id} ===`);
+        console.log(`=== DELETING MENU ITEM ID: ${id} ===`);
 
-        const deletedItem = await Inventory.findByIdAndDelete(id);
+        const deletedItem = await Menu.findByIdAndDelete(id);
 
         if (!deletedItem) {
-            return res.status(404).json({ success: false, message: "Item not found in inventory." });
+            return res.status(404).json({ success: false, message: "Menu item not found." });
         }
 
         return res.status(200).json({
             success: true,
-            message: "Inventory item deleted successfully!",
+            message: "Menu item deleted successfully!",
             deletedItemId: id
         });
     } catch (error) {
         console.error("🔴 Backend deletion failed:", error);
-        return res.status(500).json({ success: false, message: "Error deleting inventory entry." });
+        return res.status(500).json({ success: false, message: "Error deleting menu entry." });
     }
 });
+
+
+// ==========================================
+// Order
+// ==========================================
+
+
+app.post("/api/orders", async (req, res) => {
+    try {
+        const formData = req.body;
+        console.log("=== INCOMING ORDER DATA ===");
+        console.log(formData);
+
+        const newOrder = await Order.create({
+            restaurantId: getValue(formData.restaurantId, ""),
+            customerName: getValue(formData.customerName, "Guest"),
+            tableNumber: getValue(formData.tableNumber, "N/A"),
+            orderNote: getValue(formData.orderNote, ""),
+            items: (formData.items || []).map(i => ({
+    itemName: i.itemName || "Unknown Item",
+    description: i.description || "",
+    itemPrice: Number(i.itemPrice) || 0,
+    quantity: Number(i.quantity) || 1,
+})),
+            totalAmount: parseNum(getValue(formData.totalAmount, 0)),
+            orderStatus: getValue(formData.orderStatus, "Pending"),
+            paymentStatus: getValue(formData.paymentStatus, "Unpaid")
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Order created successfully!",
+            data: newOrder
+        });
+
+    } catch (error) {
+        console.error("🔴 DATABASE WRITE CRASH:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to save order to database.",
+            error: error.message
+        });
+    }
+});
+
+app.get("/api/orders", async (req, res) => {
+    try {
+        const { restaurantId } = req.query;
+        const filter = restaurantId ? { restaurantId } : {};
+
+        const dbItems = await Order.find(filter).sort({ createdAt: -1 });
+
+        const items = dbItems.map(item => ({
+            id: item._id,
+            _id: item._id,
+            restaurantId: item.restaurantId,
+            customerName: item.customerName,
+            tableNumber: item.tableNumber,
+            orderNote: item.orderNote,
+            items: item.items,
+            totalAmount: item.totalAmount,
+            orderStatus: item.orderStatus,
+            paymentStatus: item.paymentStatus,
+            createdAt: item.createdAt || new Date().toISOString()
+        }));
+
+        return res.status(200).json({
+            success: true,
+            count: items.length,
+            data: items
+        });
+    } catch (error) {
+        console.error("🔴 Backend fetch failed:", error);
+        return res.status(500).json({ success: false, message: "Error fetching orders data." });
+    }
+});
+
+app.put("/api/orders/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+
+        // Dynamically build the update object based on what was sent
+        const updatedFields = {};
+        if (updateData.restaurantId !== undefined) updatedFields.restaurantId = updateData.restaurantId;
+        if (updateData.customerName !== undefined) updatedFields.customerName = updateData.customerName;
+        if (updateData.tableNumber !== undefined) updatedFields.tableNumber = updateData.tableNumber;
+        if (updateData.orderNote !== undefined) updatedFields.orderNote = updateData.orderNote;
+        if (updateData.totalAmount !== undefined) updatedFields.totalAmount = Number(updateData.totalAmount);
+        if (updateData.orderStatus !== undefined) updatedFields.orderStatus = updateData.orderStatus;
+        if (updateData.paymentStatus !== undefined) updatedFields.paymentStatus = updateData.paymentStatus;
+        
+        if (updateData.items) {
+            updatedFields.items = updateData.items.map(i => ({
+                itemName: i.itemName || "Unknown Item",
+                description: i.description || "",
+                itemPrice: Number(i.itemPrice) || 0,
+                quantity: Number(i.quantity) || 1,
+            }));
+        }
+
+        const updatedItem = await Order.findByIdAndUpdate(
+            id,
+            { $set: updatedFields },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedItem) {
+            return res.status(404).json({ success: false, message: "Order not found." });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Order updated successfully!",
+            data: updatedItem
+        });
+    } catch (error) {
+        console.error("🔴 Backend update failed:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error updating order entry.",
+            error: error.message
+        });
+    }
+});
+
+app.delete("/api/orders/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedItem = await Order.findByIdAndDelete(id);
+
+        if (!deletedItem) {
+            return res.status(404).json({ success: false, message: "Order not found." });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Order deleted successfully!",
+            deletedItemId: id
+        });
+    } catch (error) {
+        console.error("🔴 Backend deletion failed:", error);
+        return res.status(500).json({ success: false, message: "Error deleting order entry." });
+    }
+});
+
+
+
+// ==========================================
+// Table
+// ==========================================
+
+
+
+app.post("/api/tables", async (req, res) => {
+    try {
+        const formData = req.body;
+        console.log("=== INCOMING TABLE DATA ===");
+        console.log(formData);
+
+        const newTable = await Table.create({
+            restaurantId: getValue(formData.restaurantId, ""),
+            tableName: getValue(formData.tableName, "Table 1"),
+            capacity: parseNum(getValue(formData.capacity, 2)),
+            status: getValue(formData.status, "Available")
+        });
+
+        return res.status(201).json({ 
+            success: true, 
+            message: "Table added successfully!", 
+            data: newTable 
+        });
+
+    } catch (error) {
+        console.error("🔴 DATABASE WRITE CRASH:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to save table to database.",
+            error: error.message 
+        });
+    }
+});
+
+// GET: Fetch All Tables (scoped to restaurantId if provided)
+app.get("/api/tables", async (req, res) => {
+    try {
+        const { restaurantId } = req.query;
+        const filter = restaurantId ? { restaurantId } : {};
+
+        const dbItems = await Table.find(filter).sort({ createdAt: -1 });
+
+        const items = dbItems.map(item => ({
+            id: item._id,
+            _id: item._id,
+            restaurantId: item.restaurantId,
+            tableName: item.tableName,
+            capacity: item.capacity,
+            status: item.status,
+            createdAt: item.createdAt || new Date().toISOString()
+        }));
+
+        return res.status(200).json({
+            success: true,
+            count: items.length,
+            data: items 
+        });
+    } catch (error) {
+        console.error("🔴 Backend fetch failed:", error);
+        return res.status(500).json({ success: false, message: "Error fetching tables data." });
+    }
+});
+
+// PUT: Update an Existing Table by ID
+app.put("/api/tables/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+        console.log(`=== UPDATING TABLE ID: ${id} ===`);
+
+        const updatedFields = {
+            restaurantId: getValue(updateData.restaurantId, ""),
+            tableName: getValue(updateData.tableName, "Table 1"),
+            capacity: parseNum(getValue(updateData.capacity, 2)),
+            status: getValue(updateData.status, "Available")
+        };
+
+        const updatedItem = await Table.findByIdAndUpdate(
+            id, 
+            { $set: updatedFields }, 
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedItem) {
+            return res.status(404).json({ success: false, message: "Table not found." });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Table updated successfully!",
+            data: updatedItem
+        });
+    } catch (error) {
+        console.error("🔴 Backend update failed:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Error updating table entry.",
+            error: error.message 
+        });
+    }
+});
+
+// DELETE: Remove a Table by ID
+app.delete("/api/tables/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log(`=== DELETING TABLE ID: ${id} ===`);
+
+        const deletedItem = await Table.findByIdAndDelete(id);
+
+        if (!deletedItem) {
+            return res.status(404).json({ success: false, message: "Table not found." });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Table deleted successfully!",
+            deletedItemId: id
+        });
+    } catch (error) {
+        console.error("🔴 Backend deletion failed:", error);
+        return res.status(500).json({ success: false, message: "Error deleting table entry." });
+    }
+});
+
+
 
 // ==========================================
 // 🧾 BILLS ROUTES
@@ -679,22 +539,26 @@ app.post("/api/bills", async (req, res) => {
         console.log(formData);
 
         const newBill = await Bill.create({
-            pharmacyName: getValue(formData.pharmacyName, "Unknown Pharmacy"),
+            restaurantName: getValue(formData.restaurantName, "Unknown Restaurant"),
             location: getValue(formData.location, "N/A"),
             panOrVat: getValue(formData.panOrVat, "N/A"),
             invoiceNo: getValue(formData.invoiceNo, `INV-${Date.now()}`),
             billTo: getValue(formData.billTo, "Anonymous Customer"),
+            tableNumber: getValue(formData.tableNumber, "N/A"),
             paymentMethod: getValue(formData.paymentMethod, "Cash"),
             date: formData.date ? new Date(formData.date) : new Date(),
-            item: getValue(formData.item, "Unknown Item"),
-            qty: parseNum(getValue(formData.qty, 1)),
-            rate: parseNum(getValue(formData.rate, 0)),
-            total: parseNum(getValue(formData.total, 0)),
+            items: (formData.items || []).map(i => ({
+                itemName: i.itemName || "Unknown Item",
+                quantity: parseNum(getValue(i.quantity, 1)),
+                rate: parseNum(getValue(i.rate, 0)),
+                total: parseNum(getValue(i.total, 0)),
+            })),
             subtotal: parseNum(getValue(formData.subtotal, 0)),
-            taxablePostsubdiscountSubtotal: parseNum(getValue(formData.taxablePostsubdiscountSubtotal, 0)),
-            vATCollected: parseNum(getValue(formData.vATCollected, 0)),
+            discount: parseNum(getValue(formData.discount, 0)),
+            taxableAmount: parseNum(getValue(formData.taxableAmount, 0)),
+            vatCollected: parseNum(getValue(formData.vatCollected, 0)),
             grandTotal: parseNum(getValue(formData.grandTotal, 0)),
-            pharmacyId: formData.pharmacyId
+            restaurantId: getValue(formData.restaurantId, "")
         });
 
         return res.status(201).json({
@@ -714,8 +578,8 @@ app.post("/api/bills", async (req, res) => {
 
 app.get("/api/bills", async (req, res) => {
     try {
-        const { pharmacyId } = req.query;
-        const filter = pharmacyId ? { pharmacyId } : {};
+        const { restaurantId } = req.query;
+        const filter = restaurantId ? { restaurantId } : {};
 
         const dbBills = await Bill.find(filter).sort({ createdAt: -1 });
 
@@ -723,22 +587,21 @@ app.get("/api/bills", async (req, res) => {
             return {
                 id: bill._id,
                 _id: bill._id,
-                pharmacyName: bill.pharmacyName,
+                restaurantName: bill.restaurantName,
                 location: bill.location,
                 panOrVat: bill.panOrVat,
                 invoiceNo: bill.invoiceNo,
                 billTo: bill.billTo,
+                tableNumber: bill.tableNumber,
                 paymentMethod: bill.paymentMethod,
                 date: bill.date,
-                item: bill.item,
-                qty: bill.qty,
-                rate: bill.rate,
-                total: bill.total,
+                items: bill.items,
                 subtotal: bill.subtotal,
-                taxablePostsubdiscountSubtotal: bill.taxablePostsubdiscountSubtotal,
-                vATCollected: bill.vATCollected,
+                discount: bill.discount,
+                taxableAmount: bill.taxableAmount,
+                vatCollected: bill.vatCollected,
                 grandTotal: bill.grandTotal,
-                pharmacyId: bill.pharmacyId,
+                restaurantId: bill.restaurantId,
                 createdAt: bill.createdAt
             };
         });
@@ -756,6 +619,9 @@ app.get("/api/bills", async (req, res) => {
         });
     }
 });
+
+
+
 
 
 
@@ -1044,6 +910,42 @@ app.delete("/api/staff/:id", async (req, res) => {
     }
 });
 
+// const createDefaultAdmin = async () => {
+//     try {
+//         const existingAdmin = await PharmacyUser.findOne({
+//             isAdmin: true
+//         });
+
+//         if (existingAdmin) {
+//             console.log("✅ Admin account already exists");
+//             return;
+//         }
+
+//         const admin = new PharmacyUser({
+//             phone: "0000000000",
+//             email: "admin@pharmacy.com",
+//             location: "Admin",
+//             PanOrVat: "",
+//             pharmacyName: "Pharmacy Admin",
+//             id: "123",
+//             password: "123",
+//             isActive: true,
+//             isAdmin: true
+//         });
+
+//         await admin.save();
+
+//         console.log("✅ Default Pharmacy Admin created successfully");
+//         console.log("Admin ID: 123");
+//         console.log("Admin Password: 123");
+
+//     } catch (error) {
+//         console.error("❌ Admin creation failed:", error.message);
+//     }
+// };
+
+
+
 // Start DB connection before starting server
 conectDb().then(() => {
   app.listen(Number(PORT), "0.0.0.0", () => {
@@ -1052,3 +954,16 @@ conectDb().then(() => {
 }).catch((err) => {
   console.error("❌ Critical System Halt: Server could not start because Database connection failed.");
 });
+
+
+// conectDb().then(async () => {
+
+//   await createDefaultAdmin();
+
+//   app.listen(Number(PORT), "0.0.0.0", () => {
+//     console.log(`Pharmacy full-stack server running on port ${PORT}`);
+//   });
+
+// }).catch((err) => {
+//   console.error("❌ Critical System Halt:", err);
+// });

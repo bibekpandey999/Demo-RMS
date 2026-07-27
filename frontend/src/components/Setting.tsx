@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_BASE = "https://pharmacy-management-system-ni9u.onrender.com";
+const API_BASE = "http://localhost:5000";
 
 export default function PharmacySettings() {
   const [user, setUser] = useState(null);
@@ -124,8 +124,8 @@ export default function PharmacySettings() {
     <div style={styles.page}>
       <div style={styles.container}>
         <div style={styles.header}>
-          <h1 style={styles.title}>Pharmacy Settings</h1>
-          <p style={styles.subtitle}>Manage your pharmacy account and preferences</p>
+          <h1 style={styles.title}>Restaurant Settings</h1>
+          <p style={styles.subtitle}>Manage your Restaurant account and preferences</p>
         </div>
 
         {message.text && (
@@ -166,14 +166,14 @@ export default function PharmacySettings() {
           {activeTab === "details" && (
             <div>
               <h2 style={styles.sectionTitle}>Our Details</h2>
-              <p style={styles.sectionDesc}>Your registered pharmacy information</p>
+              <p style={styles.sectionDesc}>Your registered Restaurant information</p>
               <div style={styles.detailsGrid}>
-                <DetailRow label="Pharmacy Name" value={user.pharmacyName} icon="🏥" />
+                <DetailRow label="Restaurant Name" value={user.pharmacyName} icon="🏥" />
                 <DetailRow label="PAN / VAT Number" value={user.PanOrVat || "Not provided"} icon="🧾" />
                 <DetailRow label="Phone Number" value={user.phone} icon="📞" />
                 <DetailRow label="Email" value={user.email} icon="✉️" />
                 <DetailRow label="Location" value={user.location} icon="📍" />
-                <DetailRow label="Pharmacy ID" value={user.id} icon="🆔" />
+                <DetailRow label="Restaurant ID" value={user.id} icon="🆔" />
                 <DetailRow label="Password" value="••••••••" icon="🔒" />
               </div>
             </div>
@@ -217,10 +217,10 @@ export default function PharmacySettings() {
               <p style={styles.sectionDesc}>Update your pharmacy profile information</p>
               <form onSubmit={handleDetailsSubmit} style={styles.form}>
                 <FormField
-                  label="Pharmacy Name"
+                  label="Restaurant Name"
                   value={detailsForm.pharmacyName}
                   onChange={(v) => setDetailsForm({ ...detailsForm, pharmacyName: v })}
-                  placeholder="Enter pharmacy name"
+                  placeholder="Enter Restaurant name"
                 />
                 <FormField
                   label="PAN / VAT Number"
@@ -245,7 +245,7 @@ export default function PharmacySettings() {
                   label="Location"
                   value={detailsForm.location}
                   onChange={(v) => setDetailsForm({ ...detailsForm, location: v })}
-                  placeholder="Enter pharmacy location"
+                  placeholder="Enter Restaurant location"
                 />
                 <button type="submit" disabled={loading} style={styles.submitBtn}>
                   {loading ? "Saving..." : "Save Changes"}

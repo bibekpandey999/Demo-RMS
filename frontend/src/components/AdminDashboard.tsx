@@ -59,12 +59,13 @@ interface AdminDashboardProps {
 }
 
 // Role options for staff accounts (PharmacyStaff collection)
+// 🔧 Updated to match the restaurant role set used in App.tsx's
+// ROLE_ACCESS map: Manager, Waiter, Kitchen Staff, Cashier.
 const STAFF_ROLES = [
-  'Accounts & Billing Officer',
-  'Inventory Manager',
-  'Receptionist',
-   'Doctor',
   'Manager',
+  'Waiter',
+  'Kitchen Staff',
+  'Cashier',
 ];
 
 export default function AdminDashboard({ user, lang, onLogout }: AdminDashboardProps) {
@@ -86,17 +87,17 @@ export default function AdminDashboard({ user, lang, onLogout }: AdminDashboardP
   const [formLocation, setFormLocation] = useState('');
   const [formPanOrVat, setFormPanOrVat] = useState('');
 
-  const BACKEND_URL = 'https://pharmacy-management-system-ni9u.onrender.com';
+  const BACKEND_URL = 'http://localhost:5000';
 
   const t = {
     en: {
       dashTitle: "Admin Central Command",
       welcome: "Logged in as Admin:",
-      searchPlaceholder: "Search pharmacies by name or ID...",
-      createHeading: "Register New Pharmacy User",
-      editHeading: "Modify Pharmacy Account Details",
+      searchPlaceholder: "Search Restaurant by name or ID...",
+      createHeading: "Register New Restaurant User",
+      editHeading: "Modify Restaurant Account Details",
       tableAction: "Actions",
-      tableName: "Pharmacy Store Name",
+      tableName: "Restaurant Store Name",
       tableId: "System ID",
       tableStatus: "Account Status",
       tableLocation: "Location",
@@ -109,11 +110,11 @@ export default function AdminDashboard({ user, lang, onLogout }: AdminDashboardP
     ne: {
       dashTitle: "प्रशासक केन्द्रीय कमान्ड",
       welcome: "एडमिनको रूपमा लगइन गरिएको छ:",
-      searchPlaceholder: "फार्मेसीको नाम वा ID खोज्नुहोस्...",
-      createHeading: "नयाँ फार्मेसी प्रयोगकर्ता दर्ता गर्नुहोस्",
-      editHeading: "फार्मेसी खाता विवरण परिमार्जन गर्नुहोस्",
+      searchPlaceholder: "रेस्टुरेन्टको नाम वा ID खोज्नुहोस्...",
+      createHeading: "नयाँ रेस्टुरेन्ट प्रयोगकर्ता दर्ता गर्नुहोस्",
+      editHeading: "रेस्टुरेन्ट खाता विवरण परिमार्जन गर्नुहोस्",
       tableAction: "कार्यहरू",
-      tableName: "फार्मेसी पसलको नाम",
+      tableName: "रेस्टुरेन्ट पसलको नाम",
       tableId: "प्रणाली ID",
       tableStatus: "खाता स्थिति",
       tableLocation: "स्थान",
@@ -609,13 +610,13 @@ const handleCreateStaff = async (e: React.FormEvent) => {
             <form onSubmit={isEditing ? handleUpdateUser : handleCreateUser} className="space-y-4">
               
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pharmacy Store Name</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Restaurant Store Name</label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                   <input 
                     type="text"
                     required
-                    placeholder="e.g. Kathmandu Medicals"
+                    placeholder="e.g. Everest Kitchen"
                     value={formPharmacyName}
                     onChange={(e) => setFormPharmacyName(e.target.value)}
                     className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:border-teal-500 transition-all font-medium"
@@ -689,7 +690,7 @@ const handleCreateStaff = async (e: React.FormEvent) => {
                   <input 
                     type="email"
                     required
-                    placeholder="e.g. pharmacy@example.com"
+                    placeholder="e.g. Restaurant@example.com"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
                     className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-hidden focus:border-teal-500 transition-all font-medium"
@@ -777,7 +778,7 @@ const handleCreateStaff = async (e: React.FormEvent) => {
             <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">{selectedPharmacy} — Staff Management</h2>
-                <p className="text-slate-500 text-sm mt-1">Add, edit, or remove personnel credentials for this pharmacy.</p>
+                <p className="text-slate-500 text-sm mt-1">Add, edit, or remove personnel credentials for this Restaurant.</p>
               </div>
               <button
                 onClick={closePharmacyDetails}
@@ -850,7 +851,7 @@ const handleCreateStaff = async (e: React.FormEvent) => {
                       ) : (
                         <tr>
                           <td colSpan={5} className="p-10 text-center text-slate-400 font-medium bg-slate-50/30">
-                            No staff members found for this pharmacy.
+                            No staff members found for this Restaurant.
                           </td>
                         </tr>
                       )}
@@ -869,7 +870,7 @@ const handleCreateStaff = async (e: React.FormEvent) => {
                     {isStaffEditing ? 'Edit Staff Member' : 'Add Staff Member'}
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Pharmacy: <span className="font-semibold text-slate-600">{selectedPharmacy}</span>
+                    Restaurant: <span className="font-semibold text-slate-600">{selectedPharmacy}</span>
                   </p>
                 </div>
 

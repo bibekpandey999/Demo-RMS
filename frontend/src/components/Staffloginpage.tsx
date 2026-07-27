@@ -56,7 +56,7 @@ export const ROLE_ACCESS: Record<StaffRole, RoleConfig> = {
   },
 };
 
-const API_URL = process.env.REACT_APP_API_URL || "https://pharmacy-management-system-ni9u.onrender.com";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 /* ------------------------------------------------------------------ */
 
@@ -161,7 +161,7 @@ if (!res.ok) {
             className="mt-3 text-4xl leading-tight font-[Fraunces,serif]"
             style={{ fontOpticalSizing: "auto" }}
           >
-            {pharmacyName || "Select a pharmacy"}
+            {pharmacyName || "Select a restaurant"}
           </h1>
           <p className="mt-4 text-sm text-[#B9D6CC] max-w-xs">
             Sign in with your staff ID. What you see next depends on your role —
@@ -215,7 +215,7 @@ if (!res.ok) {
               Staff Terminal
             </p>
             <h1 className="mt-1 text-2xl font-[Fraunces,serif] text-[#123832]">
-              {pharmacyName || "Select a pharmacy"}
+              {pharmacyName || "Select a restaurant"}
             </h1>
           </div>
 
@@ -240,7 +240,7 @@ if (!res.ok) {
               type="text"
               value={id}
               onChange={(e) => setId(e.target.value)}
-              placeholder="e.g. STF-0042"
+              placeholder="Enter ID
               className="w-full outline-none text-sm text-[#1C2B28] placeholder:text-[#A9B6B1] font-[IBM_Plex_Mono,monospace]"
               autoComplete="username"
             />
@@ -279,7 +279,7 @@ if (!res.ok) {
             onClick={() => navigate("/")}
             className="w-full text-center text-xs text-[#5B6B66] mt-5 hover:text-[#123832] transition-colors"
           >
-            ← Back to pharmacy login
+            ← Back to Restaurant login
           </button>
         </form>
       </div>

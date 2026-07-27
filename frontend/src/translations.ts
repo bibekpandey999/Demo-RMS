@@ -2,7 +2,7 @@
 
 export const TRANSLATIONS = {
   en: {
-    title: "Pharmacy",
+    title: "Restaurant",
     language: "Language",
     english: "English",
     nepali: "नेपाली",
@@ -14,17 +14,17 @@ export const TRANSLATIONS = {
     // Sidebar
     dashboard: "Dashboard",
     patients: "Patients & Registrations",
-    pharmacyPos: "Pharmacy POS (Sales)",
-    inventory: "Inventory & POs",
+    pharmacyPos: "Create Order",
+    inventory: "Menu",
     billing: "Billing & VAT Audit",
 
     // Dashboard
     statsOverview: "Today's Performance Overview",
     totalSales: "Total Sales",
     revenue: "Total Revenue",
-    newPatients: "New Patients",
-    lowStockAlerts: "Low Stock Alert",
-    recentSales: "Recent Pharmacy Transactions",
+    newPatients: "Staff",
+    lowStockAlerts: "Total Orders",
+    recentSales: "Recent Restaurant Transactions",
     noSalesToday: "No sales recorded yet today.",
     expiringMedicines: "Medicines Expiring Soon",
     actionRequired: "Action Required",

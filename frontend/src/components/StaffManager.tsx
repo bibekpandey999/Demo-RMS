@@ -30,19 +30,20 @@ interface StaffManagerProps {
   onClose?: () => void;
 }
 
+// 🔧 Updated to match the restaurant role set used in App.tsx's
+// ROLE_ACCESS map: Manager, Waiter, Kitchen Staff, Cashier.
 const STAFF_ROLES = [
-  'Accounts & Billing Officer',
-  'Inventory Manager',
-  'Receptionist',
-  'Doctor',
   'Manager',
+  'Waiter',
+  'Kitchen Staff',
+  'Cashier',
 ];
 
 // 🔧 FIX: baseURL was '/api' (relative), which silently failed unless you
 // have a dev-server proxy set up. Every other part of this app talks to
 // the backend at this absolute URL, so StaffManager now matches it.
 // Move this to an env var when you deploy: import.meta.env.VITE_API_URL
-const API_BASE_URL = 'https://pharmacy-management-system-ni9u.onrender.com/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const api = axios.create({ baseURL: API_BASE_URL });
 api.interceptors.request.use((config) => {
@@ -198,7 +199,7 @@ const handleCreate = async (e: React.FormEvent) => {
   if (!pharmacyName) {
     return (
       <div className="p-6 text-center text-slate-500">
-        No pharmacy specified. Open this page via a pharmacy's staff link.
+        No restaurant specified. Open this page via a restaurant's staff link.
       </div>
     );
   }
@@ -305,7 +306,7 @@ const handleCreate = async (e: React.FormEvent) => {
                   ) : (
                     <tr>
                       <td colSpan={5} className="p-10 text-center text-slate-400 font-medium bg-slate-50/30">
-                        {isLoading ? 'Loading staff...' : 'No staff members found for this pharmacy.'}
+                        {isLoading ? 'Loading staff...' : 'No staff members found for this Restaurant.'}
                       </td>
                     </tr>
                   )}
@@ -324,7 +325,7 @@ const handleCreate = async (e: React.FormEvent) => {
                 {isEditing ? 'Edit Staff Member' : 'Add Staff Member'}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Pharmacy: <span className="font-semibold text-slate-600">{pharmacyName}</span>
+                Restaurant: <span className="font-semibold text-slate-600">{pharmacyName}</span>
               </p>
             </div>
 

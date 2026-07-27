@@ -9,7 +9,7 @@ import {
   Activity,
   Building2
 } from 'lucide-react';
-
+import { Utensils, ChefHat, Soup } from "lucide-react";
 interface LoginScreenProps {
   lang: 'en' | 'ne';
   setLang: (l: 'en' | 'ne') => void;
@@ -27,9 +27,9 @@ export default function LoginScreen({ lang, setLang, onLoginSuccess }: LoginScre
   const t = {
     en: {
       portalTitle: "Authentication Portal",
-      subtitle: "Clinic & Pharmacy Management System",
-      pharmacyLabel: "Pharmacy Name",
-      pharmacyPlaceholder: "Enter registered pharmacy name",
+      subtitle: "Restaurant Management System",
+      pharmacyLabel: "Restaurant Name",
+      pharmacyPlaceholder: "Enter registered Restaurant name",
       idLabel: "User ID",
       idPlaceholder: "Enter your ID",
       passLabel: "Access Password",
@@ -37,10 +37,10 @@ export default function LoginScreen({ lang, setLang, onLoginSuccess }: LoginScre
       loginBtn: "Authenticate & Enter",
       authenticating: "Verifying credentials...",
       errorHeader: "Access Denied",
-      unauthorizedTip: "Only authorized medical and pharmacy personnel are permitted to access this panel.",
+      unauthorizedTip: "Only authorized people are permitted to access this panel.",
       envNote: "Staff credentials are secure and checked in real-time with server database records.",
-      viewTitle: "Digital Pharmacy",
-      location: "Hospital Road, Butwal"
+      viewTitle: "Digital Restaurant",
+      location: ""
     },
     ne: {
       portalTitle: "प्रमाणीकरण पोर्टल",
@@ -67,7 +67,7 @@ export default function LoginScreen({ lang, setLang, onLoginSuccess }: LoginScre
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://pharmacy-management-system-ni9u.onrender.com/api/auth/login', {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,17 +108,7 @@ export default function LoginScreen({ lang, setLang, onLoginSuccess }: LoginScre
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-200/20 blur-[120px] pointer-events-none" />
 
       {/* Floating Language Switcher */}
-      <div className="absolute top-4 right-4 z-10">
-        <button
-          type="button"
-          onClick={() => setLang(lang === 'en' ? 'ne' : 'en')}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-white/80 hover:bg-white border border-slate-200 text-xs font-semibold rounded-xl text-slate-600 transition-all hover:border-slate-300 shadow-xs cursor-pointer"
-          id="login-lang-switch"
-        >
-          <Globe className="h-4 w-4 text-teal-600" />
-          <span>{lang === 'en' ? 'नेपाली' : 'English'}</span>
-        </button>
-      </div>
+    
 
       <div className="w-full max-w-md space-y-6" id="login-container">
         
@@ -127,10 +117,10 @@ export default function LoginScreen({ lang, setLang, onLoginSuccess }: LoginScre
           
           {/* Medical Icon Emblem */}
           <div className="flex flex-col items-center text-center space-y-3" id="login-header">
-            <div className="h-14 w-14 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 border border-teal-100 shadow-xs relative group">
-              <div className="absolute inset-0 bg-teal-400/5 rounded-2xl blur-xs group-hover:blur-md transition-all animate-pulse" />
-              <Activity className="h-7 w-7 relative z-10" />
-            </div>
+            <div className="h-14 w-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 border border-orange-100 shadow-xs relative group">
+  <div className="absolute inset-0 bg-orange-400/5 rounded-2xl blur-xs group-hover:blur-md transition-all animate-pulse" />
+  <Utensils className="h-7 w-7 relative z-10" />
+</div>
             
             <div className="space-y-1">
               <h2 className="text-xl font-black text-slate-900 tracking-tight">{t.viewTitle}</h2>
@@ -213,20 +203,20 @@ export default function LoginScreen({ lang, setLang, onLoginSuccess }: LoginScre
             </div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-teal-600/10 hover:shadow-teal-600/20 active:scale-[0.98] cursor-pointer mt-2"
-            >
-              {isLoading ? t.authenticating : t.loginBtn}
-            </button>
+           <button
+  type="submit"
+  disabled={isLoading}
+  className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-orange-600/10 hover:shadow-orange-600/20 active:scale-[0.98] cursor-pointer mt-2"
+>
+  {isLoading ? t.authenticating : t.loginBtn}
+</button>
           </form>
         </div>
 
         {/* Security watermark footer */}
         <div className="text-center space-y-1 opacity-80">
           <p className="text-[10px] text-slate-400">{t.unauthorizedTip}</p>
-          <p className="text-[9px] text-teal-600 font-bold uppercase tracking-wider">{t.envNote}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider">{t.envNote}</p>
         </div>
       </div>
     </div>

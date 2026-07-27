@@ -21,30 +21,40 @@
 
 /* Custom styles for thermal tax receipt printer alignment */
 @media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
   body * {
     visibility: hidden;
   }
-  #printable-receipt, #printable-receipt *, #global-printable-receipt, #global-printable-receipt * {
+  #printable-receipt, #printable-receipt *,
+  #global-printable-receipt, #global-printable-receipt *,
+  #printable-bill, #printable-bill * {
     visibility: visible;
   }
-  #printable-receipt, #global-printable-receipt {
+  #printable-receipt, #global-printable-receipt, #printable-bill {
     position: absolute;
     left: 0;
     top: 0;
-    width: 100%;
+    width: 80mm;
+    max-width: 80mm;
     border: none !important;
     background: white !important;
     box-shadow: none !important;
-    padding: 0 !important;
+    padding: 2mm !important;
+    margin: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    font-size: 9px;
+    line-height: 1.35;
   }
-}
-
-/* Hide webkit arrows on numeric inputs for uniform layouts */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-input[type=number] {
-  -moz-appearance: textfield;
+  #printable-bill h3 { font-size: 12px; }
+  #printable-bill h4 { font-size: 10px; }
+  #printable-bill table { font-size: 8.5px; }
+  #printable-bill .pt-8 { padding-top: 12px; }
 }

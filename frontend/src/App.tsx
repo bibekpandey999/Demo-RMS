@@ -3,26 +3,29 @@ import {
   Activity, Users, ShoppingBag, Database, FileText, Globe, Search,
   ShieldAlert, UserCheck, ChevronRight, Printer, X, Stethoscope,
   LogOut, Menu, Lock, User2, AlertCircle, Loader2, ClipboardPlus,
-  Settings
+  Settings, ClipboardList, LayoutGrid, Flame
 } from 'lucide-react';
 
 import { Patient, Medicine, Sale, Supplier, PurchaseOrder, StockMovement } from './types';
 import { TRANSLATIONS } from './translations';
 import { LocalDB } from './db';
+import { Utensils } from "lucide-react";
+import Tables from './components/Table';
+import KitchenDisplay from './components/KitchenDisplay';
+import CreateBill from './components/CreateBill';
 
 import Dashboard from './components/Dashboard';
-import PatientManager from './components/PatientManager';
-import EMRManager from './components/EmrManager';
-import PharmacyPOS from './components/PharmacyPOS';
-import InventoryManager from './components/InventoryManager';
+import CreateOrder from './components/CreateOrder';
+import MenuManager from './components/MenuManager';
 import BillingManager from './components/BillingManager';
 import LoginScreen from './components/LoginScreen';
 import AdminDashboard from './components/AdminDashboard';
 import StaffManager from './components/StaffManager';
 import PharmacySettings from './components/Setting';
+import OrdersPage from './components/Orders';
 
 // Base URL for the live Express + MongoDB backend
-const API_BASE_URL = 'https://pharmacy-management-system-ni9u.onrender.com/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 /* ------------------------------------------------------------------ */
 /*  Staff role -> page access configuration                            */
@@ -30,12 +33,11 @@ const API_BASE_URL = 'https://pharmacy-management-system-ni9u.onrender.com/api';
 
 type StaffRole =
   | 'Manager'
-  | 'Doctor'
-  | 'Receptionist'
-  | 'Inventory Manager'
-  | 'Accounts & Billing Officer';
+  | 'Waiter'
+  | 'Kitchen Staff'
+  | 'Cashier';
 
-type AppView = 'dashboard' | 'patients' | 'emr' | 'pos' | 'inventory' | 'billing' | 'staff' | 'settings';
+type AppView = 'dashboard' | 'pos' | 'inventory' | 'billing' | 'staff' | 'settings' | 'orders' | 'tables' | 'kitchen' | 'createbill';
 
 interface RoleConfig {
   label: StaffRole;
@@ -43,53 +45,48 @@ interface RoleConfig {
   defaultView: AppView;
 }
 
-// 🔧 Only 'Manager' has 'staff' AND 'settings' in its pages array — every
-// other role is blocked from Staff Management and Settings, both in the
-// nav (sidebar/mobile drawer) and in <main>.
-// 🔧 'emr' is granted to the same roles that can see 'patients' (Manager,
-// Receptionist), since EMR is a clinical extension of patient records.
+// 🔧 Role -> page access map for the restaurant version:
+// - Manager: full access to everything
+// - Waiter: menu (inventory view of menu items), orders, create order (pos), kitchen (to check status)
+// - Kitchen Staff: kitchen display only
+// - Cashier: create bill, tables, billing, and VAT audit (billing includes VAT audit view)
 const ROLE_ACCESS: Record<StaffRole, RoleConfig> = {
   Manager: {
     label: 'Manager',
-    pages: ['dashboard', 'patients', 'emr', 'pos', 'inventory', 'billing', 'staff', 'settings'],
+    pages: ['dashboard', 'pos', 'inventory', 'billing', 'staff', 'settings', 'orders', 'tables', 'kitchen', 'createbill'],
     defaultView: 'dashboard',
   },
-  Doctor: {
-    label: 'Doctor',
-    pages: ['patients', 'emr'],
-    defaultView: 'emr',
-  },
-  Receptionist: {
-    label: 'Receptionist',
-    pages: ['patients', 'emr'],
-    defaultView: 'patients',
-  },
-  'Inventory Manager': {
-    label: 'Inventory Manager',
-    pages: ['inventory'],
-    defaultView: 'inventory',
-  },
-  'Accounts & Billing Officer': {
-    label: 'Accounts & Billing Officer',
-    pages: ['pos', 'billing'],
+  Waiter: {
+    label: 'Waiter',
+    pages: ['inventory', 'orders', 'pos'],
     defaultView: 'pos',
   },
+  'Kitchen Staff': {
+    label: 'Kitchen Staff',
+    pages: ['kitchen'],
+    defaultView: 'kitchen',
+  },
+  Cashier: {
+    label: 'Cashier',
+    pages: ['createbill', 'tables', 'billing'],
+    defaultView: 'createbill',
+  },
 };
-// Your existing Patient/POS/Inventory/Billing components still expect the
-// old 3-tier role prop ('Receptionist' | 'Pharmacist' | 'Owner') for their
-// internal permission checks. This maps the new 4-tier staff role onto
-// that so those components keep working unmodified.
+
+// Your existing components still expect the old 3-tier role prop
+// ('Receptionist' | 'Pharmacist' | 'Owner') for their internal permission
+// checks. This maps the new 4-tier staff role onto that so those
+// components keep working unmodified.
 const LEGACY_ROLE_MAP: Record<StaffRole, 'Receptionist' | 'Pharmacist' | 'Owner'> = {
   Manager: 'Owner',
-  Doctor: 'Receptionist',
-  Receptionist: 'Receptionist',
-  'Inventory Manager': 'Pharmacist',
-  'Accounts & Billing Officer': 'Pharmacist',
+  Waiter: 'Receptionist',
+  'Kitchen Staff': 'Pharmacist',
+  Cashier: 'Pharmacist',
 };
-EMRManager
+
 /* ------------------------------------------------------------------ */
-/*  Staff login gate — shown after a non-admin pharmacy account logs   */
-/*  in, before the main PMS is unlocked.                               */
+/*  Staff login gate — shown after a non-admin restaurant account logs */
+/*  in, before the main system is unlocked.                            */
 /* ------------------------------------------------------------------ */
 
 function StaffLoginGate({
@@ -155,14 +152,14 @@ function StaffLoginGate({
 
       // Defensive check: your backend currently looks up staff by ID alone
       // (it doesn't filter by pharmacyName), so a staff ID from a different
-      // pharmacy could otherwise slip through here. Block it client-side
+      // restaurant could otherwise slip through here. Block it client-side
       // until the /api/staff/login route is updated to query by
       // { id, pharmacyName } together.
       if (returnedPharmacy && returnedPharmacy !== pharmacyName) {
         setError(
           lang === 'en'
-            ? 'This staff account does not belong to this pharmacy.'
-            : 'यो कर्मचारी खाता यो फार्मेसीसँग सम्बन्धित छैन।'
+            ? 'This staff account does not belong to this restaurant.'
+            : 'यो कर्मचारी खाता यो रेस्टुरेन्टसँग सम्बन्धित छैन।'
         );
         setLoading(false);
         return;
@@ -185,14 +182,14 @@ function StaffLoginGate({
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
         <div className="flex items-center gap-2.5 mb-6">
           <div className="h-10 w-10 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-xs">
-            <Stethoscope className="h-5 w-5" />
+            <Utensils className="h-5 w-5" />
           </div>
           <div>
             <p className="text-[10px] font-bold text-teal-600 uppercase tracking-widest leading-none">
               {lang === 'en' ? 'Staff Terminal' : 'कर्मचारी टर्मिनल'}
             </p>
             <h1 className="text-base font-extrabold text-gray-900 leading-tight">
-              {pharmacyName || (lang === 'en' ? 'Pharmacy' : 'फार्मेसी')}
+              {pharmacyName || (lang === 'en' ? 'Restaurant' : '')}
             </h1>
           </div>
         </div>
@@ -202,8 +199,8 @@ function StaffLoginGate({
         </h2>
         <p className="text-xs text-gray-500 mb-6">
           {lang === 'en'
-            ? 'Enter the ID and password issued by your pharmacy admin.'
-            : 'फार्मेसी एडमिनले दिएको आईडी र पासवर्ड प्रविष्ट गर्नुहोस्।'}
+            ? 'Enter the ID and password issued by your restaurant admin.'
+            : 'रेस्टुरेन्ट एडमिनले दिएको आईडी र पासवर्ड प्रविष्ट गर्नुहोस्।'}
         </p>
 
         {error && (
@@ -261,7 +258,7 @@ function StaffLoginGate({
           onClick={onBackToPharmacyLogin}
           className="w-full text-center text-xs text-gray-500 mt-5 hover:text-teal-700 transition-colors cursor-pointer"
         >
-          {lang === 'en' ? '← Back to pharmacy login' : '← फार्मेसी लगइनमा फर्कनुहोस्'}
+          {lang === 'en' ? '← Back to restaurant login' : '← रेस्टुरेन्ट लगइनमा फर्कनुहोस्'}
         </button>
       </div>
     </div>
@@ -284,10 +281,10 @@ export default function App() {
     isAuthenticated: null,
     isAdmin: false
   });
-  
+
   const [currentUserPayload, setCurrentUserPayload] = useState<{ _id: string; id: string; pharmacyName: string } | null>(null);
 
-  // Staff-level authentication (sits "inside" a logged-in pharmacy account)
+  // Staff-level authentication (sits "inside" a logged-in restaurant account)
   const [staffAuthState, setStaffAuthState] = useState<{
     isAuthenticated: boolean;
     role: StaffRole | null;
@@ -307,7 +304,6 @@ export default function App() {
 
   // Sub-selection shortcut states
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [patientPOSShortcut, setPatientPOSShortcut] = useState<Patient | null>(null);
   const [invoiceToView, setInvoiceToView] = useState<Sale | null>(null);
 
   // Global search input
@@ -361,12 +357,12 @@ export default function App() {
           body: JSON.stringify({ token })
         });
         const data = await response.json();
-        
-          if (response.ok && data.success) {
+
+        if (response.ok && data.success) {
           const targetUser = data.user || data.data?.user || data.data || data;
-          
+
           const isAdminUser = !!(
-            targetUser?.isAdmin === true || 
+            targetUser?.isAdmin === true ||
             targetUser?.role === 'Admin' ||
             String(targetUser?.role).toLowerCase() === 'admin' ||
             String(targetUser?.id).toLowerCase() === 'admin'
@@ -375,9 +371,9 @@ export default function App() {
           setCurrentUserPayload({
             _id: targetUser?._id || targetUser?.id || 'user-id',
             id: targetUser?.id || targetUser?._id || 'user-id',
-            pharmacyName: targetUser?.pharmacyName || 'Pharmacy Workspace'
+            pharmacyName: targetUser?.pharmacyName || 'Restaurant Workspace'
           });
-          
+
           setAuthState({ isAuthenticated: true, isAdmin: isAdminUser });
         } else {
           localStorage.removeItem('authToken');
@@ -391,8 +387,8 @@ export default function App() {
     checkSession();
   }, []);
 
-  // Once a non-admin pharmacy account is confirmed, try to restore a staff
-  // session that was previously active for THIS specific pharmacy.
+  // Once a non-admin restaurant account is confirmed, try to restore a
+  // staff session that was previously active for THIS specific restaurant.
   useEffect(() => {
     if (
       authState.isAuthenticated === true &&
@@ -427,8 +423,8 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staffPayload]);
 
-  // Full logout: clears both pharmacy session and any staff session
-   const handleLogout = () => {
+  // Full logout: clears both restaurant session and any staff session
+  const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     localStorage.removeItem('staffRole');
@@ -440,7 +436,7 @@ export default function App() {
     setAuthState({ isAuthenticated: false, isAdmin: false });
   };
 
-  // Staff-only logout: keeps the pharmacy session, returns to staff login
+  // Staff-only logout: keeps the restaurant session, returns to staff login
   const handleStaffLogout = () => {
     localStorage.removeItem('staffRole');
     localStorage.removeItem('staffId');
@@ -450,9 +446,9 @@ export default function App() {
   };
 
   // Validates role data dynamically using the parameters returned by LoginScreen
- const handleLoginSuccess = (token: string, userDetails?: any) => {
+  const handleLoginSuccess = (token: string, userDetails?: any) => {
     localStorage.setItem('authToken', token);
-    
+
     let isUserAdmin = false;
     let decodedPayload: any = null;
 
@@ -473,7 +469,7 @@ export default function App() {
     }
 
     const roleSource = userDetails?.user || userDetails?.data?.user || userDetails?.data || userDetails || decodedPayload || {};
-    
+
     if (
       roleSource.isAdmin === true ||
       roleSource.role === 'Admin' ||
@@ -487,7 +483,7 @@ export default function App() {
     setCurrentUserPayload({
       _id: roleSource._id || roleSource.id || 'user-id',
       id: roleSource.id || roleSource._id || 'user-id',
-      pharmacyName: roleSource.pharmacyName || 'Pharmacy Workspace' 
+      pharmacyName: roleSource.pharmacyName || 'Restaurant Workspace'
     });
 
     localStorage.setItem('user', JSON.stringify({
@@ -495,7 +491,7 @@ export default function App() {
       id: roleSource.id || roleSource._id || '',
       pharmacyName: roleSource.pharmacyName || '',
     }));
-    
+
     setAuthState({
       isAuthenticated: true,
       isAdmin: isUserAdmin
@@ -525,20 +521,20 @@ export default function App() {
             <Activity className="h-6 w-6 text-teal-600" />
           </div>
           <p className="text-slate-500 text-xs tracking-wider animate-pulse font-medium">
-            {lang === 'en' ? 'Verifying clinical session secure keys...' : 'क्लिनिकल सेसन सुरक्षित कुञ्जीहरू रुजु गर्दै...'}
+            {lang === 'en' ? 'Verifying session secure keys...' : 'सेसन सुरक्षित कुञ्जीहरू रुजु गर्दै...'}
           </p>
         </div>
       </div>
     );
   }
 
-  // Gateway 2: Not Logged In -> Pharmacy / Admin login
+  // Gateway 2: Not Logged In -> Restaurant / Admin login
   if (authState.isAuthenticated === false) {
     return (
-      <LoginScreen 
-        lang={lang} 
-        setLang={setLang} 
-        onLoginSuccess={(token, user) => handleLoginSuccess(token, user)} 
+      <LoginScreen
+        lang={lang}
+        setLang={setLang}
+        onLoginSuccess={(token, user) => handleLoginSuccess(token, user)}
       />
     );
   }
@@ -547,7 +543,7 @@ export default function App() {
   if (authState.isAuthenticated && authState.isAdmin === true) {
     const adminTranslations = TRANSLATIONS[lang];
     return (
-      <AdminDashboard 
+      <AdminDashboard
         lang={lang}
         setLang={setLang}
         onLogout={handleLogout}
@@ -561,7 +557,7 @@ export default function App() {
     );
   }
 
-  // Gateway 4: Pharmacy account is logged in, but no staff member has
+  // Gateway 4: Restaurant account is logged in, but no staff member has
   // signed in on this terminal yet -> require staff login first.
   if (authState.isAuthenticated && !authState.isAdmin && !staffAuthState.isAuthenticated) {
     return (
@@ -574,17 +570,17 @@ export default function App() {
     );
   }
 
-  // Gateway 5: FALLTHROUGH -> Standard PMS, scoped to the logged-in staff role
+  // Gateway 5: FALLTHROUGH -> Standard system, scoped to the logged-in staff role
   const t = TRANSLATIONS[lang];
-  const staffRole: StaffRole = staffPayload?.role ?? 'Receptionist';
+  const staffRole: StaffRole = staffPayload?.role ?? 'Waiter';
   const legacyRole = LEGACY_ROLE_MAP[staffRole];
   const canAccess = (view: AppView) => ROLE_ACCESS[staffRole].pages.includes(view);
-  // 🔧 The pharmacy this whole session belongs to — needed by StaffManager
-  // so it only ever shows/edits staff for this pharmacy.
+  // 🔧 The restaurant this whole session belongs to — needed by StaffManager
+  // so it only ever shows/edits staff for this restaurant.
   const activePharmacyName = staffPayload?.pharmacyName || currentUserPayload?.pharmacyName || '';
 
   const matchingGlobalPatients = globalSearchQuery.trim()
-    ? patients.filter(p => 
+    ? patients.filter(p =>
         (p.fullName || (p as any).name || '').toLowerCase().includes(globalSearchQuery.toLowerCase()) ||
         (p.phone || (p as any).phoneNumber || '').includes(globalSearchQuery) ||
         String(p.id || p._id || '').toLowerCase().includes(globalSearchQuery.toLowerCase())
@@ -593,27 +589,21 @@ export default function App() {
 
   const handleGlobalSearchSelect = (patient: Patient) => {
     setSelectedPatient(patient);
-    setCurrentView('patients');
     setGlobalSearchQuery('');
     setShowGlobalSearchResults(false);
   };
 
-  const handleStartSaleForPatient = (patient: Patient) => {
-    setPatientPOSShortcut(patient);
-    setCurrentView('pos');
-  };
-
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans text-gray-800 antialiased" id="app-root">
-      
+
       {/* SIDEBAR NAVIGATION PANEL */}
       <aside className="hidden md:flex md:w-64 bg-white border-r border-gray-200 flex-col justify-between shrink-0" id="app-sidebar">
         <div className="p-5 flex flex-col space-y-6">
-          
-          {/* Clinic Brand Identity */}
+
+          {/* Restaurant Brand Identity */}
           <div className="flex items-center gap-2.5" id="sidebar-brand">
             <div className="h-10 w-10 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-xs">
-              <Stethoscope className="h-5.5 w-5.5" />
+              <Utensils className="h-5 w-5" />
             </div>
             <div>
               <h2 className="text-base font-extrabold text-gray-900 tracking-tight leading-tight">{t.title}</h2>
@@ -637,31 +627,43 @@ export default function App() {
               </button>
             )}
 
-            {canAccess('patients') && (
+            {canAccess('createbill') && (
               <button
-                onClick={() => { setCurrentView('patients'); }}
+                onClick={() => { setCurrentView('createbill'); setSelectedPatient(null); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                  currentView === 'patients'
+                  currentView === 'createbill'
                     ? 'bg-teal-50 text-teal-800'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                <Users className={`h-4.5 w-4.5 ${currentView === 'patients' ? 'text-teal-600' : 'text-gray-400'}`} />
-                <span>{t.patients}</span>
+                <FileText className={`h-4.5 w-4.5 ${currentView === 'createbill' ? 'text-teal-600' : 'text-gray-400'}`} />
+                <span>{lang === 'en' ? 'Create Bill' : 'बिल बनाउनुहोस्'}</span>
               </button>
             )}
 
-            {canAccess('emr') && (
+            {canAccess('kitchen') && (
               <button
-                onClick={() => { setCurrentView('emr'); }}
+                onClick={() => { setCurrentView('kitchen'); setSelectedPatient(null); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                  currentView === 'emr'
+                  currentView === 'kitchen'
                     ? 'bg-teal-50 text-teal-800'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                <ClipboardPlus className={`h-4.5 w-4.5 ${currentView === 'emr' ? 'text-teal-600' : 'text-gray-400'}`} />
-                <span>{lang === 'en' ? 'EMR' : 'ईएमआर'}</span>
+                <Flame className={`h-4.5 w-4.5 ${currentView === 'kitchen' ? 'text-teal-600' : 'text-gray-400'}`} />
+                <span>{lang === 'en' ? 'Kitchen' : 'भान्सा'}</span>
+              </button>
+            )}
+
+            {canAccess('tables') && (
+              <button
+                onClick={() => { setCurrentView('tables'); setSelectedPatient(null); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  currentView === 'tables' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <LayoutGrid className={`h-4.5 w-4.5 ${currentView === 'tables' ? 'text-teal-600' : 'text-gray-400'}`} />
+                <span>{lang === 'en' ? 'Tables' : 'टेबलहरू'}</span>
               </button>
             )}
 
@@ -675,7 +677,21 @@ export default function App() {
                 }`}
               >
                 <ShoppingBag className={`h-4.5 w-4.5 ${currentView === 'pos' ? 'text-teal-600' : 'text-gray-400'}`} />
-                <span>{t.pharmacyPos}</span>
+                <span>{lang === 'en' ? 'Create Order' : 'अर्डर बनाउनुहोस्'}</span>
+              </button>
+            )}
+
+            {canAccess('orders') && (
+              <button
+                onClick={() => { setCurrentView('orders'); setSelectedPatient(null); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  currentView === 'orders'
+                    ? 'bg-teal-50 text-teal-800'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <ClipboardList className={`h-4.5 w-4.5 ${currentView === 'orders' ? 'text-teal-600' : 'text-gray-400'}`} />
+                <span>{lang === 'en' ? 'Orders' : 'अर्डरहरू'}</span>
               </button>
             )}
 
@@ -689,7 +705,7 @@ export default function App() {
                 }`}
               >
                 <Database className={`h-4.5 w-4.5 ${currentView === 'inventory' ? 'text-teal-600' : 'text-gray-400'}`} />
-                <span>{t.inventory}</span>
+                <span>{lang === 'en' ? 'Menu' : 'मेनु'}</span>
               </button>
             )}
 
@@ -703,15 +719,11 @@ export default function App() {
                 }`}
               >
                 <FileText className={`h-4.5 w-4.5 ${currentView === 'billing' ? 'text-teal-600' : 'text-gray-400'}`} />
-                <span>{t.billing}</span>
+                <span>{lang === 'en' ? 'Billing & VAT Audit' : 'बिलिङ र भ्याट अडिट'}</span>
               </button>
             )}
 
-            {/* 🔧 FIX: Desktop sidebar was missing this entirely — Managers
-                had no way to reach Staff Management from a desktop browser,
-                only from the mobile drawer. canAccess('staff') is false for
-                every role except Manager, so this stays hidden for everyone
-                else. */}
+            {/* Manager-only: Manage Staff */}
             {canAccess('staff') && (
               <button
                 onClick={() => { setCurrentView('staff'); setSelectedPatient(null); }}
@@ -726,7 +738,7 @@ export default function App() {
               </button>
             )}
 
-            {/* 🔧 Settings — Manager-only, same gating pattern as 'staff' */}
+            {/* Manager-only: Settings */}
             {canAccess('settings') && (
               <button
                 onClick={() => { setCurrentView('settings'); setSelectedPatient(null); }}
@@ -769,14 +781,14 @@ export default function App() {
             onClick={handleLogout}
             className="w-full text-center text-[10px] text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
           >
-            {lang === 'en' ? 'Switch pharmacy account' : 'फार्मेसी खाता बदल्नुहोस्'}
+            {lang === 'en' ? 'Switch restaurant account' : 'रेस्टुरेन्ट खाता बदल्नुहोस्'}
           </button>
         </div>
       </aside>
 
       {/* MAIN VIEWPORT WRAPPER */}
       <div className="flex-1 flex flex-col min-w-0" id="app-viewport">
-        
+
         {/* TOP STATUS HEADER BAR */}
         <header className="h-16 bg-white border-b border-gray-200 px-4 sm:px-5 flex items-center justify-between shrink-0 sticky top-0 z-20" id="app-header">
           {/* Left side: View Title + Search trigger */}
@@ -791,63 +803,21 @@ export default function App() {
             </button>
 
             <h1 className="text-sm sm:text-base font-extrabold text-gray-900">
-              {currentView === 'dashboard' ? t.dashboard : 
-               currentView === 'patients' ? t.patients : 
-               currentView === 'emr' ? (lang === 'en' ? 'Electronic Medical Record (EMR)' : 'ईएमआर') :
-               currentView === 'pos' ? t.pharmacyPos : 
-               currentView === 'inventory' ? t.inventory :
-               // 🔧 FIX: header title fell through to "Billing" for the
-               // staff view before — now it labels itself correctly.
+              {currentView === 'dashboard' ? t.dashboard :
+               currentView === 'pos' ? (lang === 'en' ? 'Create Order' : 'अर्डर बनाउनुहोस्') :
+               currentView === 'inventory' ? (lang === 'en' ? 'Menu' : 'मेनु') :
+               currentView === 'orders' ? (lang === 'en' ? 'Orders' : 'अर्डरहरू') :
+               currentView === 'kitchen' ? (lang === 'en' ? 'Kitchen' : 'भान्सा') :
+               currentView === 'tables' ? (lang === 'en' ? 'Tables' : 'टेबलहरू') :
+               currentView === 'createbill' ? (lang === 'en' ? 'Create Bill' : 'बिल बनाउनुहोस्') :
                currentView === 'staff' ? (lang === 'en' ? 'Manage Staff' : 'कर्मचारी व्यवस्थापन') :
                currentView === 'settings' ? (lang === 'en' ? 'Settings' : 'सेटिङ्स') :
-               t.billing}
+               (lang === 'en' ? 'Billing & VAT Audit' : 'बिलिङ र भ्याट अडिट')}
             </h1>
-
-            {/* Global patient fuzzy search box */}
-            {(canAccess('patients') || canAccess('emr')) && (
-              <div className="relative w-32 xs:w-44 sm:w-64" id="global-search-container">
-            
-             
-
-                {/* Global search overlay results drop */}
-                {showGlobalSearchResults && globalSearchQuery && (
-                  <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-30 max-h-52 overflow-y-auto divide-y divide-gray-100" id="global-search-results">
-                    {matchingGlobalPatients.length === 0 ? (
-                      <div className="p-3 text-xs text-gray-400 italic text-center">No patients match search</div>
-                    ) : (
-                      matchingGlobalPatients.map(p => (
-                        <button
-                          key={p.id || p._id}
-                          onClick={() => handleGlobalSearchSelect(p)}
-                          className="w-full text-left p-2.5 hover:bg-teal-50/50 flex items-center justify-between text-xs transition-colors"
-                        >
-                          <div>
-                            <p className="font-bold text-gray-900">{p.fullName || (p as any).name}</p>
-                            <p className="text-[9px] text-gray-400 font-mono">{String(p.id || p._id)} • {(p.address || '').split(',')[0]}</p>
-                          </div>
-                          <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* Right side: Language switcher + active role tag */}
+          {/* Right side: active role tag */}
           <div className="flex items-center gap-4" id="header-right">
-            {/* Language toggle affordance */}
-            <button
-              onClick={() => setLang(lang === 'en' ? 'ne' : 'en')}
-              className="px-3 py-1.5 bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-              id="lang-toggle-btn"
-            >
-              <Globe className="h-3.5 w-3.5 text-teal-600" />
-              <span>{lang === 'en' ? 'नेपाली' : 'English'}</span>
-            </button>
-
-            {/* Active clinical session tag info */}
             <div className="hidden lg:flex items-center gap-2 text-xs font-semibold text-gray-600 font-mono bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200" id="utc-clock">
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               <span> ACTIVE</span>
@@ -858,7 +828,7 @@ export default function App() {
         {/* CONTAINER VIEWPORT WORKSPACE */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6" id="app-main-viewport">
           {currentView === 'dashboard' && canAccess('dashboard') && (
-            <Dashboard 
+            <Dashboard
               patients={patients}
               medicines={medicines}
               sales={sales}
@@ -869,58 +839,30 @@ export default function App() {
             />
           )}
 
-          {currentView === 'patients' && canAccess('patients') && (
-            <PatientManager
-              patients={patients}
-              onPatientsUpdated={refreshData}
-              lang={lang}
-              selectedPatient={selectedPatient}
-              setSelectedPatient={setSelectedPatient}
-              onStartSaleForPatient={handleStartSaleForPatient}
-              role={legacyRole}
-              onMutation={refreshData}
-              initialSelectedPatient={selectedPatient}
-              onClearInitialShortcut={() => setSelectedPatient(null)}
-              onStartSale={handleStartSaleForPatient}
-            />
+          {currentView === 'kitchen' && canAccess('kitchen') && (
+            <KitchenDisplay />
           )}
 
-          {currentView === 'emr' && canAccess('emr') && (
-  <EMRManager
-    patients={patients}
-    lang={lang}
-    onRefreshPatients={refreshData}
-  />
-)}
+          {currentView === 'createbill' && canAccess('createbill') && (
+            <CreateBill />
+          )}
+
+          {currentView === 'tables' && canAccess('tables') && (
+            <Tables />
+          )}
 
           {currentView === 'pos' && canAccess('pos') && (
-            <PharmacyPOS
-              medicines={medicines}
-              patients={patients}
-              onSaleCompleted={refreshData}
-              lang={lang}
-              currentUserRole={legacyRole}
-              patientShortcut={patientPOSShortcut}
-              clearPatientShortcut={() => setPatientPOSShortcut(null)}
-              onViewInvoice={(sale) => setInvoiceToView(sale)}
-              role={legacyRole}
-              shortcutPatient={patientPOSShortcut}
-              onClearShortcut={() => setPatientPOSShortcut(null)}
-              onSaleComplete={refreshData}
-            />
+            <CreateOrder onOrderCreated={refreshData} />
+          )}
+
+          {currentView === 'orders' && canAccess('orders') && (
+            <OrdersPage />
           )}
 
           {currentView === 'inventory' && canAccess('inventory') && (
-            <InventoryManager
-              medicines={medicines}
-              suppliers={suppliers}
-              purchaseOrders={purchaseOrders}
-              stockMovements={stockMovements}
+            <MenuManager
               lang={lang}
               currentUserRole={legacyRole}
-              onInventoryUpdated={refreshData}
-              role={legacyRole}
-              onMutation={refreshLocalData}
             />
           )}
 
@@ -937,23 +879,19 @@ export default function App() {
             />
           )}
 
-          {/* 🔧 FIX: pass pharmacyName so StaffManager knows which pharmacy's
-              staff to list/create/update/delete. canAccess('staff') is only
-              ever true for the Manager role, so non-managers never even
-              reach this branch. */}
+          {/* Manager-only: Manage Staff, scoped to this restaurant */}
           {canAccess('staff') && currentView === 'staff' && (
             <StaffManager pharmacyName={activePharmacyName} />
           )}
 
-          {/* 🔧 Settings — Manager-only, same gating pattern as StaffManager
-              above. canAccess('settings') is only ever true for Manager. */}
+          {/* Manager-only: Settings */}
           {canAccess('settings') && currentView === 'settings' && (
             <PharmacySettings />
           )}
         </main>
       </div>
 
-      {/* APP-WIDE GLOBAL THERMAL TAX INVOICE OVERLAY POPUP */}
+      {/* APP-WIDE GLOBAL INVOICE OVERLAY POPUP */}
       {invoiceToView && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in" id="global-invoice-modal">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-6 shadow-2xl border border-gray-100">
@@ -969,11 +907,11 @@ export default function App() {
 
             {/* Invoice Printable layout block */}
             <div className="p-5 border border-gray-300 rounded-xl bg-[#fafafa] font-sans text-xs text-gray-800 space-y-4 shadow-inner max-h-[400px] overflow-y-auto" id="global-printable-receipt">
-             <div className="text-center space-y-1 pb-3 border-b border-gray-300 border-dashed">
-  <h3 className="text-base font-bold text-gray-950 uppercase tracking-tight">{invoiceToView.pharmacyName || t.title}</h3>
-  <p className="text-[10px] text-gray-500">{invoiceToView.location || t.location}</p>
-  <p className="font-semibold text-[10px]">PAN / VAT No: {invoiceToView.panOrVat || 'N/A'}</p>
-  <h4 className="text-xs font-extrabold text-gray-950 uppercase border-y border-gray-200 py-1 tracking-wider mt-2">{t.invoice}</h4>
+              <div className="text-center space-y-1 pb-3 border-b border-gray-300 border-dashed">
+                <h3 className="text-base font-bold text-gray-950 uppercase tracking-tight">{invoiceToView.pharmacyName || t.title}</h3>
+                <p className="text-[10px] text-gray-500">{invoiceToView.location || t.location}</p>
+                <p className="font-semibold text-[10px]">PAN / VAT No: {invoiceToView.panOrVat || 'N/A'}</p>
+                <h4 className="text-xs font-extrabold text-gray-950 uppercase border-y border-gray-200 py-1 tracking-wider mt-2">{t.invoice}</h4>
                 {invoiceToView.paymentStatus === 'Refunded' && (
                   <div className="my-1.5 py-1 bg-red-100 text-red-800 border-2 border-red-300 font-bold rounded uppercase tracking-widest text-[11px]" id="invoice-void-banner">
                     VOID / REFUNDED INVOICE
@@ -985,7 +923,7 @@ export default function App() {
               <div className="grid grid-cols-2 gap-y-1 border-b border-gray-200 pb-2 leading-relaxed">
                 <div>Invoice No: <span className="font-mono font-bold text-gray-950">{invoiceToView.id}</span></div>
                 <div className="text-right">Date: <span className="font-mono">{new Date(invoiceToView.createdAt).toLocaleString()}</span></div>
-                
+
                 {invoiceToView.patientId && (
                   <div className="col-span-2">
                     {t.receiptTo}: <span className="font-bold text-gray-900">
@@ -994,7 +932,7 @@ export default function App() {
                     <span className="text-[10px] text-gray-500 font-mono ml-1">({invoiceToView.patientId})</span>
                   </div>
                 )}
-                
+
                 <div className="col-span-2">Payment Method: <span className="font-semibold text-gray-950">{invoiceToView.paymentMethod}</span></div>
               </div>
 
@@ -1097,11 +1035,11 @@ export default function App() {
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-40 md:hidden flex" id="mobile-drawer-overlay">
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity" 
+          <div
+            className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          
+
           {/* Drawer Content */}
           <div className="relative w-72 max-w-[85vw] bg-white h-full flex flex-col justify-between shadow-2xl z-50 border-r border-gray-150">
             <div className="p-5 flex flex-col space-y-6">
@@ -1109,14 +1047,14 @@ export default function App() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-9 w-9 bg-teal-600 rounded-lg flex items-center justify-center text-white">
-                    <Stethoscope className="h-5 w-5" />
+                    <Utensils className="h-5 w-5" />
                   </div>
                   <div>
                     <h2 className="text-sm font-extrabold text-gray-900 leading-tight">{t.title}</h2>
                     <span className="text-[9px] font-bold text-teal-600 uppercase tracking-widest block leading-none">{t.location}</span>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="p-1.5 rounded-lg border border-gray-100 text-gray-400 hover:text-gray-950 hover:bg-gray-50 cursor-pointer"
                   title="Close Menu"
@@ -1139,27 +1077,39 @@ export default function App() {
                   </button>
                 )}
 
-                {canAccess('patients') && (
+                {canAccess('createbill') && (
                   <button
-                    onClick={() => { setCurrentView('patients'); setIsMobileMenuOpen(false); }}
+                    onClick={() => { setCurrentView('createbill'); setSelectedPatient(null); setIsMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                      currentView === 'patients' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      currentView === 'createbill' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                   >
-                    <Users className={`h-4.5 w-4.5 ${currentView === 'patients' ? 'text-teal-600' : 'text-gray-400'}`} />
-                    <span>{t.patients}</span>
+                    <FileText className={`h-4.5 w-4.5 ${currentView === 'createbill' ? 'text-teal-600' : 'text-gray-400'}`} />
+                    <span>{lang === 'en' ? 'Create Bill' : 'बिल बनाउनुहोस्'}</span>
                   </button>
                 )}
 
-                {canAccess('emr') && (
+                {canAccess('kitchen') && (
                   <button
-                    onClick={() => { setCurrentView('emr'); setIsMobileMenuOpen(false); }}
+                    onClick={() => { setCurrentView('kitchen'); setSelectedPatient(null); setIsMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                      currentView === 'emr' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      currentView === 'kitchen' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                   >
-                    <ClipboardPlus className={`h-4.5 w-4.5 ${currentView === 'emr' ? 'text-teal-600' : 'text-gray-400'}`} />
-                    <span>{lang === 'en' ? 'EMR' : 'ईएमआर'}</span>
+                    <Flame className={`h-4.5 w-4.5 ${currentView === 'kitchen' ? 'text-teal-600' : 'text-gray-400'}`} />
+                    <span>{lang === 'en' ? 'Kitchen' : 'भान्सा'}</span>
+                  </button>
+                )}
+
+                {canAccess('tables') && (
+                  <button
+                    onClick={() => { setCurrentView('tables'); setSelectedPatient(null); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                      currentView === 'tables' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <LayoutGrid className={`h-4.5 w-4.5 ${currentView === 'tables' ? 'text-teal-600' : 'text-gray-400'}`} />
+                    <span>{lang === 'en' ? 'Tables' : 'टेबलहरू'}</span>
                   </button>
                 )}
 
@@ -1171,7 +1121,19 @@ export default function App() {
                     }`}
                   >
                     <ShoppingBag className={`h-4.5 w-4.5 ${currentView === 'pos' ? 'text-teal-600' : 'text-gray-400'}`} />
-                    <span>{t.pharmacyPos}</span>
+                    <span>{lang === 'en' ? 'Create Order' : 'अर्डर बनाउनुहोस्'}</span>
+                  </button>
+                )}
+
+                {canAccess('orders') && (
+                  <button
+                    onClick={() => { setCurrentView('orders'); setSelectedPatient(null); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                      currentView === 'orders' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ClipboardList className={`h-4.5 w-4.5 ${currentView === 'orders' ? 'text-teal-600' : 'text-gray-400'}`} />
+                    <span>{lang === 'en' ? 'Orders' : 'अर्डरहरू'}</span>
                   </button>
                 )}
 
@@ -1183,7 +1145,7 @@ export default function App() {
                     }`}
                   >
                     <Database className={`h-4.5 w-4.5 ${currentView === 'inventory' ? 'text-teal-600' : 'text-gray-400'}`} />
-                    <span>{t.inventory}</span>
+                    <span>{lang === 'en' ? 'Menu' : 'मेनु'}</span>
                   </button>
                 )}
 
@@ -1195,16 +1157,16 @@ export default function App() {
                     }`}
                   >
                     <FileText className={`h-4.5 w-4.5 ${currentView === 'billing' ? 'text-teal-600' : 'text-gray-400'}`} />
-                    <span>{t.billing}</span>
+                    <span>{lang === 'en' ? 'Billing & VAT Audit' : 'बिलिङ र भ्याट अडिट'}</span>
                   </button>
                 )}
 
                 {canAccess('staff') && (
                   <button
-                    onClick={() => { 
-                      setCurrentView('staff'); 
-                      setSelectedPatient(null); 
-                      setIsMobileMenuOpen(false); 
+                    onClick={() => {
+                      setCurrentView('staff');
+                      setSelectedPatient(null);
+                      setIsMobileMenuOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                       currentView === 'staff' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -1258,7 +1220,7 @@ export default function App() {
                 onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
                 className="w-full text-center text-[10px] text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
               >
-                {lang === 'en' ? 'Switch pharmacy account' : 'फार्मेसी खाता बदल्नुहोस्'}
+                {lang === 'en' ? 'Switch restaurant account' : 'रेस्टुरेन्ट खाता बदल्नुहोस्'}
               </button>
             </div>
           </div>

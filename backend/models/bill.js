@@ -1,60 +1,88 @@
 const mongoose = require("mongoose");
 
-const billingSchema = mongoose.Schema({
-    pharmacyName:{
-        type:String,
+const billItemSchema = mongoose.Schema({
+    itemName: {
+        type: String,
+        required: true,
     },
-    location:{
-        type:String,
+    quantity: {
+        type: Number,
+        required: true,
+        min: 1,
+        default: 1,
     },
-    panOrVat:{
-        type:String,
+    rate: {
+        type: Number,
+        required: true,
+        default: 0,
+    },
+    total: {
+        type: Number,
+        required: true,
+    },
+}, { _id: false });
+
+const restaurantBillingSchema = mongoose.Schema({
+    restaurantName: {
+        type: String,
+        required: true,
+    },
+    location: {
+        type: String,
+    },
+    panOrVat: {
+        type: String,
     },
     invoiceNo: {
         type: String,
+        required: true,
     },
     billTo: {
+        type: String, 
+        default: "Guest",
+    },
+    tableNumber: {
         type: String,
     },
     paymentMethod: {
         type: String,
+        enum: ["Cash", "eSewa", "Khalti", "IMEPay", "Card", "Due"],
+        default: "Cash",
     },
     date: {
-        type: Date, 
+        type: Date,
+        default: Date.now,
     },
-    item: {
-        type: String, 
-    },
-    qty: {       
-        type: Number, 
-        default: 1
-    },
-    rate: {
-        type: Number, 
-        default: 0,
-    },
-    total: {
-        type: Number, 
+    items: {
+        type: [billItemSchema],
+        required: true,
     },
     subtotal: {
-        type: Number, 
+        type: Number,
+        required: true,
     },
-    taxablePostsubdiscountSubtotal: {
-        type: Number,  
+    discount: {
+        type: Number,
+        default: 0,
     },
-    vATCollected: {
-        type: Number, 
-    },
-    grandTotal: {    
+    taxableAmount: {
         type: Number,
     },
-         pharmacyId: {
+    vatCollected: {
+        type: Number,
+    },
+    grandTotal: {
+        type: Number,
+        required: true,
+    },
+    restaurantId: {
         type: String,
+        required: true,
     },
 },
 {
-    timestamps: true, 
+    timestamps: true,
 });
 
-const Bill = mongoose.model("Bill", billingSchema);
+const Bill = mongoose.model("RestaurantBill", restaurantBillingSchema);
 module.exports = Bill;

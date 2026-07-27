@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Users,
   TrendingUp,
-  AlertTriangle,
   ShoppingBag,
   Calendar,
   ArrowRight,
   Activity,
-  CheckCircle,
   FileText,
   Loader2,
   PackageX,
+  UtensilsCrossed,
+  Receipt,
+  LayoutGrid,
+  ClipboardList,
+  ListOrdered,
 } from 'lucide-react';
 import { Patient, Sale } from '../types';
 import { TRANSLATIONS } from '../translations';
@@ -19,21 +21,19 @@ import { TRANSLATIONS } from '../translations';
 // CONFIG
 // ==========================================
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://pharmacy-management-system-ni9u.onrender.com';
-const INVENTORY_URL = `${API_BASE}/api/inventory`;
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const BILLS_URL = `${API_BASE}/api/bills`;
+const ORDERS_URL = `${API_BASE}/api/orders`;
 
-// Key used when the pharmacy logs in successfully (adjust if your login page uses a different key)
-const PHARMACY_USER_STORAGE_KEY = 'user';
+// Key used when the restaurant logs in successfully (adjust if your login page uses a different key)
+const RESTAURANT_USER_STORAGE_KEY = 'user';
 
 interface DashboardProps {
   patients: Patient[];
-  /** @deprecated Medicines are now fetched directly from MongoDB inside this component; this prop is ignored. */
   medicines?: unknown[];
-  /** @deprecated Sales/transactions are now fetched directly from MongoDB (bills) inside this component; this prop is ignored. */
   sales?: unknown[];
   lang: 'en' | 'ne';
-  setView: (view: 'dashboard' | 'patients' | 'pos' | 'inventory' | 'billing') => void;
+  setView: (view: 'dashboard' | 'pos' | 'inventory' | 'billing' | 'staff' | 'settings' | 'orders' | 'tables' | 'kitchen' | 'createbill') => void;
   setSelectedPatient: (patient: Patient | null) => void;
   onViewInvoice: (sale: Sale) => void;
 }
@@ -42,54 +42,27 @@ interface DashboardProps {
 // TYPES — raw shapes returned by the Express + MongoDB backend
 // ==========================================
 
-interface RawInventoryItem {
-  _id: string;
-  medicineBrandName: string;
-  genericMoleculeName: string;
-  initialStockQty: number;
-  reorderThresholdAlert: number;
-  expirationDate: string | null;
-  pharmacyId?: string;
-}
-
-interface MedicineStockRow {
-  id: string;
-  name: string;
-  genericName: string;
-  stock: number;
-  reorderLevel: number;
-  expiryDate: string;
-  pharmacyId: string;
-}
-
-const mapRawToMedicineRow = (raw: RawInventoryItem): MedicineStockRow => ({
-  id: raw._id,
-  name: raw.medicineBrandName,
-  genericName: raw.genericMoleculeName,
-  stock: Number(raw.initialStockQty) || 0,
-  reorderLevel: Number(raw.reorderThresholdAlert) || 0,
-  expiryDate: raw.expirationDate || '',
-  pharmacyId: raw.pharmacyId || '',
-});
-
-
 interface RawBillLine {
   _id: string;
   invoiceNo: string;
   billTo: string;
+  tableNumber?: string | number;
   paymentMethod: string;
   date: string;
-  item: string;
-  qty: number;
-  rate: number;
-  total: number;
+  items: {
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }[];
   subtotal: number;
-  taxablePostsubdiscountSubtotal: number;
-  vATCollected: number;
+  discount: number;
+  taxableAmount: number;
+  vatCollected: number;
   grandTotal: number;
   createdAt?: string;
-  pharmacyId?: string;
-  pharmacyName?: string;
+  restaurantId?: string;
+  restaurantName?: string;
   location?: string;
   panOrVat?: string;
 }
@@ -104,6 +77,7 @@ interface InvoiceLineItem {
 interface InvoiceRecord {
   invoiceNo: string;
   billTo: string;
+  tableNumber: string;
   paymentMethod: string;
   date: string;
   items: InvoiceLineItem[];
@@ -111,62 +85,44 @@ interface InvoiceRecord {
   taxableAmount: number;
   vatAmount: number;
   grandTotal: number;
-  pharmacyId: string;
-  pharmacyName: string;
+  restaurantId: string;
+  restaurantName: string;
   location: string;
   panOrVat: string;
 }
 
-// Group flat bill-line documents from MongoDB into one row per invoice
-const groupBillLinesIntoInvoices = (lines: RawBillLine[]): InvoiceRecord[] => {
-  const byInvoice = new Map<string, InvoiceRecord>();
-
-  for (const line of lines) {
-    const existing = byInvoice.get(line.invoiceNo);
-    const lineItem: InvoiceLineItem = {
-      name: line.item,
-      quantity: Number(line.qty) || 0,
-      unitPrice: Number(line.rate) || 0,
-      totalPrice: Number(line.total) || 0,
-    };
-
-    if (existing) {
-      existing.items.push(lineItem);
-    } else {
-     byInvoice.set(line.invoiceNo, {
-  invoiceNo: line.invoiceNo,
-  billTo: line.billTo,
-  paymentMethod: line.paymentMethod,
-  date: line.date || line.createdAt || new Date().toISOString(),
-  items: [lineItem],
-  subtotal: Number(line.subtotal) || 0,
-  taxableAmount: Number(line.taxablePostsubdiscountSubtotal) || 0,
-  vatAmount: Number(line.vATCollected) || 0,
-  grandTotal: Number(line.grandTotal) || 0,
-  pharmacyId: line.pharmacyId || '',
-  pharmacyName: line.pharmacyName || '',
-  location: line.location || '',
-  panOrVat: line.panOrVat || '',
+// Map a single Bill document (already grouped, since /api/bills returns one row per bill) into a display invoice
+const mapBillToInvoice = (bill: RawBillLine): InvoiceRecord => ({
+  invoiceNo: bill.invoiceNo,
+  billTo: bill.billTo,
+  tableNumber: String(bill.tableNumber ?? ''),
+  paymentMethod: bill.paymentMethod,
+  date: bill.date || bill.createdAt || new Date().toISOString(),
+  items: (bill.items || []).map((item) => ({
+    name: item.name,
+    quantity: Number(item.quantity) || 0,
+    unitPrice: Number(item.unitPrice) || 0,
+    totalPrice: Number(item.totalPrice) || 0,
+  })),
+  subtotal: Number(bill.subtotal) || 0,
+  taxableAmount: Number(bill.taxableAmount) || 0,
+  vatAmount: Number(bill.vatCollected) || 0,
+  grandTotal: Number(bill.grandTotal) || 0,
+  restaurantId: bill.restaurantId || '',
+  restaurantName: bill.restaurantName || '',
+  location: bill.location || '',
+  panOrVat: bill.panOrVat || '',
 });
-    }
-  }
 
-  return Array.from(byInvoice.values()).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-};
-
-// Convert an aggregated invoice into the Sale shape the invoice/print popup expects
+// Convert an invoice into the Sale shape the invoice/print popup expects
 const invoiceRecordToSale = (invoice: InvoiceRecord, patients: Patient[]): Sale => {
   const matchedPatient = patients.find((p) => p.fullName === invoice.billTo);
-  const discount = Math.max(0, invoice.subtotal - invoice.taxableAmount);
-  const vatRate = invoice.taxableAmount > 0 ? (invoice.vatAmount / invoice.taxableAmount) * 100 : 0;
 
   return {
     id: invoice.invoiceNo,
     createdAt: invoice.date,
     patientId: matchedPatient?.id || null,
-    pharmacyName: invoice.pharmacyName,
+    pharmacyName: invoice.restaurantName,
     location: invoice.location,
     panOrVat: invoice.panOrVat,
     items: invoice.items.map((item) => ({
@@ -178,15 +134,34 @@ const invoiceRecordToSale = (invoice: InvoiceRecord, patients: Patient[]): Sale 
       totalPrice: item.totalPrice,
     })),
     subTotal: invoice.subtotal,
-    discount,
-    vatRate,
+    discount: Math.max(0, invoice.subtotal - invoice.taxableAmount),
+    vatRate: invoice.taxableAmount > 0 ? (invoice.vatAmount / invoice.taxableAmount) * 100 : 0,
     vatAmount: invoice.vatAmount,
     grandTotal: invoice.grandTotal,
     paymentMethod: invoice.paymentMethod as Sale['paymentMethod'],
   } as Sale;
 };
+
+// ==========================================
+// TYPES — raw shape returned by /api/orders
+// ==========================================
+
+interface RawOrder {
+  id: string;
+  _id: string;
+  restaurantId: string;
+  customerName: string;
+  tableNumber?: string | number;
+  orderNote?: string;
+  items: unknown[];
+  totalAmount: number;
+  orderStatus: string;
+  paymentStatus: string;
+  createdAt: string;
+}
+
 export default function Dashboard({
-  patients, // NOTE: this comes from App.tsx, which fetches it live from MongoDB (GET /api/patients)
+  patients,
   lang,
   setView,
   setSelectedPatient,
@@ -221,97 +196,56 @@ export default function Dashboard({
   const todayStr = new Date().toISOString().slice(0, 10);
 
   // ==========================================
-  // LOGGED-IN PHARMACY ID — read once from localStorage
+  // LOGGED-IN RESTAURANT ID — read once from localStorage
   // ==========================================
- const [pharmacyId, setPharmacyId] = useState<string>('');
+  const [restaurantId, setRestaurantId] = useState<string>('');
 
-useEffect(() => {
-  try {
-    const raw = localStorage.getItem(PHARMACY_USER_STORAGE_KEY);
-    if (raw) {
-      const storedUser = JSON.parse(raw);
-      const id = storedUser?.id || storedUser?._id || storedUser?.pharmacy?.id || storedUser?.pharmacy?._id || '';
-      setPharmacyId(String(id));
-    } else {
-      console.warn('No item found in localStorage under key:', PHARMACY_USER_STORAGE_KEY);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RESTAURANT_USER_STORAGE_KEY);
+      if (raw) {
+        const storedUser = JSON.parse(raw);
+        const id =
+          storedUser?.id ||
+          storedUser?._id ||
+          storedUser?.restaurant?.id ||
+          storedUser?.restaurant?._id ||
+          '';
+        setRestaurantId(String(id));
+      } else {
+        console.warn('No item found in localStorage under key:', RESTAURANT_USER_STORAGE_KEY);
+      }
+    } catch (err) {
+      console.error('Failed to parse restaurant user from localStorage:', err);
     }
-  } catch (err) {
-    console.error('Failed to parse pharmacy user from localStorage:', err);
-  }
-}, []);
-
-  // Helper: safely get a patient's display id (Mongo returns both id and _id)
-  const getPatientId = (p: any): string => String(p?.id || p?._id || '');
+  }, []);
 
   // Helper: safely get a patient's display name (Mongo/legacy field variants)
   const getPatientName = (p: any): string => p?.fullName || p?.name || 'Unknown';
 
-  // Helper: safely get a patient's allergies as an array (Mongo may store as comma-string)
-  const getPatientAllergies = (p: any): string[] => {
-    if (Array.isArray(p?.allergies)) return p.allergies;
-    if (typeof p?.drugSensitivities === 'string' && p.drugSensitivities !== 'None') {
-      return p.drugSensitivities.split(', ');
-    }
-    return [];
-  };
-
-  // Patients scoped to the logged-in pharmacy only (client-side filter,
-  // since /api/patients has no pharmacyId query support on the backend)
-  const scopedPatients = useMemo(() => {
-    if (!pharmacyId) return [];
-    return patients.filter((p: any) => String(p?.pharmacyId || '') === pharmacyId);
-  }, [patients, pharmacyId]);
-
   // ==========================================
-  // LIVE MEDICINE INVENTORY (for Low Stock + Expiring Soon)
-  // ==========================================
-  const [medicineRows, setMedicineRows] = useState<MedicineStockRow[]>([]);
-  const [inventoryLoading, setInventoryLoading] = useState(true);
-  const [inventoryError, setInventoryError] = useState('');
-
-  const fetchInventory = async (pid: string) => {
-    setInventoryLoading(true);
-    setInventoryError('');
-    try {
-      const res = await fetch(`${INVENTORY_URL}?pharmacyId=${encodeURIComponent(pid)}`);
-      const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.message || 'Failed to load inventory.');
-      }
-      // Extra client-side safety net in case backend filter is bypassed
-      const scoped = (result.data || []).filter((item: RawInventoryItem) => item.pharmacyId === pid);
-      setMedicineRows(scoped.map(mapRawToMedicineRow));
-    } catch (err: any) {
-      setInventoryError(err.message || 'Could not connect to the server.');
-    } finally {
-      setInventoryLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!pharmacyId) return;
-    fetchInventory(pharmacyId);
-  }, [pharmacyId]);
-
-  // ==========================================
-  // LIVE BILLING LEDGER (for Recent Pharmacy Transactions + Revenue/Sales stats)
+  // LIVE BILLING LEDGER (for Recent Restaurant Transactions + Daily/Total Revenue + Daily Sales)
   // ==========================================
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [billsLoading, setBillsLoading] = useState(true);
   const [billsError, setBillsError] = useState('');
 
-  const fetchBills = async (pid: string) => {
+  const fetchBills = async (rid: string) => {
     setBillsLoading(true);
     setBillsError('');
     try {
-      const res = await fetch(`${BILLS_URL}?pharmacyId=${encodeURIComponent(pid)}`);
+      const res = await fetch(`${BILLS_URL}?restaurantId=${encodeURIComponent(rid)}`);
       const result = await res.json();
       if (!res.ok || !result.success) {
         throw new Error(result.message || 'Failed to load billing ledger.');
       }
-      // Extra client-side safety net in case backend filter is bypassed
-      const scoped = (result.data || []).filter((line: RawBillLine) => line.pharmacyId === pid);
-      setInvoices(groupBillLinesIntoInvoices(scoped));
+      // Only keep bills whose restaurantId matches the logged-in restaurant (localStorage id),
+      // as an extra client-side safety net in case the backend filter is ever bypassed.
+      const scoped = (result.data || []).filter((bill: RawBillLine) => bill.restaurantId === rid);
+      const mapped = scoped
+        .map(mapBillToInvoice)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setInvoices(mapped);
     } catch (err: any) {
       setBillsError(err.message || 'Could not connect to the server.');
     } finally {
@@ -320,46 +254,78 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    if (!pharmacyId) return;
-    fetchBills(pharmacyId);
-  }, [pharmacyId]);
+    if (!restaurantId) return;
+    fetchBills(restaurantId);
+  }, [restaurantId]);
 
-  // Filter today's entities
-  const todayInvoices = useMemo(() => invoices.filter((inv) => inv.date.startsWith(todayStr)), [invoices, todayStr]);
-  const todayPatients = scopedPatients.filter((p) => ((p as any).createdAt || '').startsWith(todayStr));
+  // ==========================================
+  // LIVE ORDERS (for Total Orders stat)
+  // ==========================================
+  const [orders, setOrders] = useState<RawOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState('');
 
-  // Calculating stats
-  const salesCount = todayInvoices.length;
-  const totalRevenue = todayInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
-  const patientsCount = todayPatients.length;
+  const fetchOrders = async (rid: string) => {
+    setOrdersLoading(true);
+    setOrdersError('');
+    try {
+      const res = await fetch(`${ORDERS_URL}?restaurantId=${encodeURIComponent(rid)}`);
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || 'Failed to load orders.');
+      }
+      // Only keep orders whose restaurantId matches the logged-in restaurant (localStorage id),
+      // as an extra client-side safety net in case the backend filter is ever bypassed.
+      const scoped = (result.data || []).filter((o: RawOrder) => o.restaurantId === rid);
+      setOrders(scoped);
+    } catch (err: any) {
+      setOrdersError(err.message || 'Could not connect to the server.');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
-  // Low stock counts (medicine stock <= reorderLevel), live from MongoDB
-  const lowStockMeds = medicineRows.filter((m) => m.stock <= m.reorderLevel);
-  const lowStockCount = lowStockMeds.length;
+  useEffect(() => {
+    if (!restaurantId) return;
+    fetchOrders(restaurantId);
+  }, [restaurantId]);
 
-  // Medicines expiring within the next 90 days, live from MongoDB
-  const expiringMeds = useMemo(() => {
-    const limitDate = new Date();
-    limitDate.setDate(limitDate.getDate() + 90);
-    return medicineRows.filter((m) => {
-      if (!m.expiryDate) return false;
-      const expDate = new Date(m.expiryDate);
-      return expDate <= limitDate;
-    });
-  }, [medicineRows]);
+  // Filter today's invoices (for Daily Revenue + Daily Sales)
+  const todayInvoices = useMemo(
+    () => invoices.filter((inv) => inv.date.startsWith(todayStr)),
+    [invoices, todayStr]
+  );
+
+  // Daily Revenue: sum of grandTotal for today's bills only (same restaurantId as localStorage)
+  const dailyRevenue = useMemo(
+    () => todayInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0),
+    [todayInvoices]
+  );
+
+  // Daily Sales: count of today's bills only (same restaurantId as localStorage)
+  const dailySalesCount = todayInvoices.length;
+
+  // Total Revenue: sum of grandTotal across ALL bills for this restaurant (not just today)
+  const totalRevenue = useMemo(
+    () => invoices.reduce((sum, inv) => sum + inv.grandTotal, 0),
+    [invoices]
+  );
+
+  // Total Orders: count of all orders for this restaurant
+  const totalOrdersCount = orders.length;
 
   // Recent transactions (top 5), live from MongoDB
   const recentInvoicesList = invoices.slice(0, 5);
 
-  // If there's no pharmacyId in localStorage, the user isn't logged in — don't render pharmacy data
-  if (!pharmacyId) {
+  // If there's no restaurantId in localStorage, the user isn't logged in — don't render restaurant data
+  if (!restaurantId) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center space-y-2" id="dashboard-no-pharmacy">
-        <AlertTriangle className="h-8 w-8 text-amber-500" />
+      <div className="flex flex-col items-center justify-center py-24 text-center space-y-2" id="dashboard-no-restaurant">
+        <UtensilsCrossed className="h-8 w-8 text-amber-500" />
         <p className="text-sm font-medium text-gray-700">
           {lang === 'en'
-            ? 'No pharmacy session found. Please log in again.'
-            : 'फार्मेसी सत्र फेला परेन। कृपया फेरि लगइन गर्नुहोस्।'}
+            ? 'No restaurant session found. Please log in again.'
+            : 'रेस्टुरेन्ट सत्र फेला परेन। कृपया फेरि लगइन गर्नुहोस्।'}
         </p>
       </div>
     );
@@ -390,12 +356,14 @@ useEffect(() => {
 
       {/* Grid Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="stats-grid">
-        {/* Total Revenue */}
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between" id="stat-revenue">
+        {/* Daily Revenue */}
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between" id="stat-daily-revenue">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.revenue}</p>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {lang === 'en' ? 'Daily Revenue' : 'दैनिक आम्दानी'}
+            </p>
             <h3 className="text-2xl font-bold text-gray-900">
-              {billsLoading ? '...' : `NPR ${totalRevenue.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              {billsLoading ? '...' : `NPR ${dailyRevenue.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </h3>
           </div>
           <div className="p-3 bg-teal-50 rounded-lg text-teal-600">
@@ -403,52 +371,49 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Sales Today */}
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between" id="stat-sales">
+        {/* Daily Sales (bill count) */}
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between" id="stat-daily-sales">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.totalSales}</p>
-            <h3 className="text-2xl font-bold text-gray-900">{billsLoading ? '...' : salesCount}</h3>
-            <p className="text-xs text-gray-400">{lang === 'en' ? 'Completed checkouts' : 'सफल बिलहरू'}</p>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {lang === 'en' ? 'Daily Sales' : 'दैनिक बिक्री'}
+            </p>
+            <h3 className="text-2xl font-bold text-gray-900">{billsLoading ? '...' : dailySalesCount}</h3>
+            <p className="text-xs text-gray-400">{lang === 'en' ? 'Bills today' : 'आजका बिलहरू'}</p>
           </div>
           <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
             <ShoppingBag className="h-6 w-6" />
           </div>
         </div>
 
-        {/* New Patients Today */}
-        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between" id="stat-patients">
+        {/* Total Revenue */}
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between" id="stat-total-revenue">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.newPatients}</p>
-            <h3 className="text-2xl font-bold text-gray-900">{patientsCount}</h3>
-            <p className="text-xs text-gray-400">{lang === 'en' ? 'Walk-in & Regular' : 'दर्ता गरिएका'}</p>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {lang === 'en' ? 'Total Revenue' : 'कुल आम्दानी'}
+            </p>
+            <h3 className="text-2xl font-bold text-gray-900">
+              {billsLoading ? '...' : `NPR ${totalRevenue.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </h3>
+            <p className="text-xs text-gray-400">{lang === 'en' ? 'All-time total' : 'सबै समयको जम्मा'}</p>
           </div>
           <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
-            <Users className="h-6 w-6" />
+            <Receipt className="h-6 w-6" />
           </div>
         </div>
 
-        {/* Low Stock Alerts */}
-        <button
-          onClick={() => setView('inventory')}
-          className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between hover:border-amber-300 transition-colors text-left w-full group"
-          id="stat-low-stock"
-        >
+        {/* Total Orders */}
+        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between" id="stat-total-orders">
           <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.lowStockAlerts}</p>
-            <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              {inventoryLoading ? '...' : lowStockCount}
-              {!inventoryLoading && lowStockCount > 0 && (
-                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-red-600 animate-ping" />
-              )}
-            </h3>
-            <p className="text-xs text-amber-600 font-medium group-hover:underline flex items-center gap-1">
-              {lang === 'en' ? 'Review & order drugs' : 'विवरण हेर्नुहोस्'} <ArrowRight className="h-3 w-3" />
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {lang === 'en' ? 'Total Orders' : 'कुल अर्डर'}
             </p>
+            <h3 className="text-2xl font-bold text-gray-900">{ordersLoading ? '...' : totalOrdersCount}</h3>
+            <p className="text-xs text-gray-400">{lang === 'en' ? 'All-time orders' : 'सबै समयका अर्डरहरू'}</p>
           </div>
-          <div className={`p-3 rounded-lg ${lowStockCount > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400'}`}>
-            <AlertTriangle className="h-6 w-6" />
+          <div className="p-3 bg-orange-50 rounded-lg text-orange-600">
+            <ListOrdered className="h-6 w-6" />
           </div>
-        </button>
+        </div>
       </div>
 
       {/* Two column breakdown */}
@@ -456,24 +421,20 @@ useEffect(() => {
         {/* Left Column: Recent Transactions */}
         <div className="lg:col-span-8 bg-white rounded-xl border border-gray-200 shadow-xs p-5 space-y-4" id="recent-sales-card">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-900 tracking-tight">{t.recentSales}</h2>
-            <button
-              onClick={() => setView('billing')}
-              className="text-xs font-medium text-teal-600 hover:text-teal-700 hover:underline flex items-center gap-1"
-            >
-              {lang === 'en' ? 'View all invoices' : 'सबै बिल सूची'} <ArrowRight className="h-3 w-3" />
-            </button>
+            <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+              {lang === 'en' ? 'Recent Restaurant Transactions' : 'हालैका रेस्टुरेन्ट कारोबार'}
+            </h2>
+            
           </div>
 
           <div className="overflow-x-auto" id="recent-sales-table-wrapper">
             <table className="min-w-full divide-y divide-gray-100 text-sm">
               <thead>
                 <tr className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider bg-gray-50">
-                  <th className="px-4 py-3 rounded-l-lg">ID</th>
-                  <th className="px-4 py-3">{lang === 'en' ? 'Customer/Patient' : 'बिरामी'}</th>
+                  <th className="px-4 py-3 rounded-l-lg">{lang === 'en' ? 'Bill' : 'बिल'}</th>
+                  <th className="px-4 py-3">{lang === 'en' ? 'Customer/Table' : 'ग्राहक/टेबल'}</th>
                   <th className="px-4 py-3">{lang === 'en' ? 'Payment' : 'भुक्तानी'}</th>
                   <th className="px-4 py-3 text-right">{lang === 'en' ? 'Amount' : 'रकम'}</th>
-                  <th className="px-4 py-3 text-center rounded-r-lg">{lang === 'en' ? 'Invoice' : 'बिल'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100" id="recent-sales-table-body">
@@ -489,7 +450,7 @@ useEffect(() => {
                     <td colSpan={5} className="px-4 py-8 text-center text-red-500">
                       <PackageX className="h-5 w-5 mx-auto mb-1" />
                       {billsError}
-                      <button onClick={() => fetchBills(pharmacyId)} className="block mx-auto mt-1 text-teal-600 font-bold text-xs underline">
+                      <button onClick={() => fetchBills(restaurantId)} className="block mx-auto mt-1 text-teal-600 font-bold text-xs underline">
                         {lang === 'en' ? 'Retry' : 'फेरि प्रयास गर्नुहोस्'}
                       </button>
                     </td>
@@ -502,26 +463,23 @@ useEffect(() => {
                   </tr>
                 ) : (
                   recentInvoicesList.map((invoice) => {
-                    const patient = scopedPatients.find((p) => getPatientName(p) === invoice.billTo);
+                    const patient = patients.find((p) => getPatientName(p) === invoice.billTo);
                     return (
                       <tr key={invoice.invoiceNo} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3.5 font-mono text-xs text-gray-500">{invoice.invoiceNo}</td>
                         <td className="px-4 py-3.5">
-                          {patient ? (
-                            <div className="space-y-0.5">
-                              <span className="font-medium text-gray-900">{getPatientName(patient)}</span>
+                          <div className="space-y-0.5">
+                            <span className="font-medium text-gray-900">
+                              {patient ? getPatientName(patient) : invoice.billTo || t.walkIn}
+                            </span>
+                            {invoice.tableNumber && (
                               <div className="flex gap-1.5 items-center">
-                                <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1 py-0.5 rounded">{getPatientId(patient)}</span>
-                                {getPatientAllergies(patient).length > 0 && (
-                                  <span className="text-[10px] bg-red-50 text-red-600 font-medium px-1 rounded">
-                                    {lang === 'en' ? 'Allergies' : 'एलर्जी'}
-                                  </span>
-                                )}
+                                <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
+                                  {lang === 'en' ? 'Table' : 'टेबल'} {invoice.tableNumber}
+                                </span>
                               </div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 font-medium italic">{invoice.billTo || t.walkIn}</span>
-                          )}
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3.5">
                           <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
@@ -536,15 +494,7 @@ useEffect(() => {
                         <td className="px-4 py-3.5 text-right font-medium text-gray-900 font-mono">
                           NPR {invoice.grandTotal.toFixed(2)}
                         </td>
-                        <td className="px-4 py-3.5 text-center">
-                          <button
-                            onClick={() => onViewInvoice(invoiceRecordToSale(invoice, scopedPatients))}
-                            className="p-1 text-gray-400 hover:text-teal-600 rounded transition-colors"
-                            title="View Invoice"
-                          >
-                            <FileText className="h-4 w-4 mx-auto" />
-                          </button>
-                        </td>
+                       
                       </tr>
                     );
                   })
@@ -554,86 +504,45 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Right Column: Alerts & Actions */}
-        <div className="lg:col-span-4 space-y-6" id="dashboard-sidebar">
-          {/* Quick Shortcuts */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-xs p-5 space-y-3" id="quick-links-card">
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">{lang === 'en' ? 'Quick Operations' : 'द्रुत कार्यहरू'}</h2>
-            <div className="grid grid-cols-1 gap-2">
-              <button
-                onClick={() => { setSelectedPatient(null); setView('patients'); }}
-                className="w-full py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg text-sm flex items-center justify-between transition-colors shadow-xs"
-              >
-                <span>{lang === 'en' ? 'Register New Patient' : 'बिरामी दर्ता गर्नुहोस'}</span>
-                <Users className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setView('pos')}
-                className="w-full py-2.5 px-3 bg-white hover:bg-gray-50 text-teal-700 font-medium rounded-lg text-sm flex items-center justify-between transition-colors border border-gray-200"
-              >
-                <span>{lang === 'en' ? 'Open Pharmacy Cashier' : 'नयाँ औषधी बिक्री र बिल'}</span>
-                <ShoppingBag className="h-4 w-4 text-teal-600" />
-              </button>
-              <button
-                onClick={() => setView('inventory')}
-                className="w-full py-2.5 px-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg text-sm flex items-center justify-between transition-colors border border-gray-200"
-              >
-                <span>{lang === 'en' ? 'Adjust Stock Levels' : 'स्टक मिलाउनुहोस'}</span>
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-              </button>
-            </div>
-          </div>
-
-          {/* Expiring Medicine Alerts — live from MongoDB */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-xs p-5 space-y-4" id="expiring-meds-card">
-            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              {t.expiringMedicines}
-            </h3>
-
-            {inventoryLoading ? (
-              <div className="p-4 bg-gray-50 rounded-lg text-xs text-gray-500 border border-gray-100 flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{lang === 'en' ? 'Loading inventory...' : 'लोड हुँदैछ...'}</span>
-              </div>
-            ) : inventoryError ? (
-              <div className="p-4 bg-red-50 rounded-lg text-xs text-red-700 border border-red-100 space-y-1">
-                <p className="flex items-center gap-2">
-                  <PackageX className="h-4 w-4" />
-                  {inventoryError}
-                </p>
-                <button onClick={() => fetchInventory(pharmacyId)} className="text-teal-600 font-bold underline">
-                  {lang === 'en' ? 'Retry' : 'फेरि प्रयास गर्नुहोस्'}
-                </button>
-              </div>
-            ) : expiringMeds.length === 0 ? (
-              <div className="p-4 bg-green-50/50 rounded-lg text-xs text-green-700 border border-green-100 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                <span>{lang === 'en' ? 'No medicines expiring in the next 90 days.' : 'अर्को ९० दिनमा म्याद सकिने औषधि छैन।'}</span>
-              </div>
-            ) : (
-              <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1" id="expiring-meds-list">
-                {expiringMeds.map((med) => {
-                  const daysLeft = Math.ceil((new Date(med.expiryDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-                  return (
-                    <div key={med.id} className="p-3 bg-amber-50/50 rounded-lg border border-amber-100 space-y-1">
-                      <div className="flex justify-between items-start text-xs">
-                        <span className="font-bold text-gray-900">{med.name}</span>
-                        <span className="text-[10px] font-mono text-amber-700 bg-amber-100/60 px-1 py-0.2 rounded font-medium">
-                          {daysLeft > 0 ? `${daysLeft} days` : 'Expired!'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-[11px] text-gray-500">
-                        <span>{med.genericName}</span>
-                        <span className="font-mono">{t.stockInHand}: {med.stock}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Right Column: Quick Operations */}
+        {/* Right Column: Quick Operations */}
+<div className="lg:col-span-4 space-y-6" id="dashboard-sidebar">
+  <div className="bg-white rounded-xl border border-gray-200 shadow-xs p-5 space-y-3" id="quick-links-card">
+    <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+      {lang === 'en' ? 'Quick Operations' : 'द्रुत कार्यहरू'}
+    </h2>
+    <div className="grid grid-cols-1 gap-2">
+      <button
+        onClick={() => setView('inventory')}
+        className="w-full py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg text-sm flex items-center justify-between transition-colors shadow-xs"
+      >
+        <span>{lang === 'en' ? 'Menu' : 'मेनु'}</span>
+        <UtensilsCrossed className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => setView('createbill')}
+        className="w-full py-2.5 px-3 bg-white hover:bg-gray-50 text-teal-700 font-medium rounded-lg text-sm flex items-center justify-between transition-colors border border-gray-200"
+      >
+        <span>{lang === 'en' ? 'Create Bill' : 'बिल बनाउनुहोस्'}</span>
+        <Receipt className="h-4 w-4 text-teal-600" />
+      </button>
+      <button
+        onClick={() => setView('tables')}
+        className="w-full py-2.5 px-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg text-sm flex items-center justify-between transition-colors border border-gray-200"
+      >
+        <span>{lang === 'en' ? 'Table' : 'टेबल'}</span>
+        <LayoutGrid className="h-4 w-4 text-indigo-500" />
+      </button>
+      <button
+        onClick={() => setView('orders')}
+        className="w-full py-2.5 px-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-lg text-sm flex items-center justify-between transition-colors border border-gray-200"
+      >
+        <span>{lang === 'en' ? 'Order' : 'अर्डर'}</span>
+        <ClipboardList className="h-4 w-4 text-orange-500" />
+      </button>
+    </div>
+  </div>
+</div>
       </div>
     </div>
   );
