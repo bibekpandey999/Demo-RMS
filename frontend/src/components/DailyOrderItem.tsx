@@ -36,27 +36,29 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
     fetchOrders();
   }, [restaurantId]);
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const url = restaurantId
-        ? `/api/orders?restaurantId=${restaurantId}`
-        : "/api/orders";
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.success) {
-        setOrders(data.data);
-      } else {
-        setError(data.message || "Failed to fetch orders.");
-      }
-    } catch (err) {
-      console.error("Fetch orders error:", err);
-      setError("Error fetching orders data.");
-    } finally {
-      setLoading(false);
+  const API_BASE_URL = 'https://rms-0wk0.onrender.com/api';
+
+const fetchOrders = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const url = restaurantId
+      ? `${API_BASE_URL}/orders?restaurantId=${restaurantId}`
+      : `${API_BASE_URL}/orders`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.success) {
+      setOrders(data.data);
+    } else {
+      setError(data.message || "Failed to fetch orders.");
     }
-  };
+  } catch (err) {
+    console.error("Fetch orders error:", err);
+    setError("Error fetching orders data.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Only completed & served orders
   const completedOrders = useMemo(

@@ -1095,6 +1095,18 @@ export default function App() {
                   </button>
                 )}
 
+                {canAccess('totalorder') && (
+  <button
+    onClick={() => { setCurrentView('totalorder'); setSelectedPatient(null); setIsMobileMenuOpen(false); }}
+    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+      currentView === 'totalorder' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+    }`}
+  >
+    <ClipboardList className={`h-4.5 w-4.5 ${currentView === 'totalorder' ? 'text-teal-600' : 'text-gray-400'}`} />
+    <span>{lang === 'en' ? 'Total Sales' : 'कुल बिक्री'}</span>
+  </button>
+)}
+
                 {canAccess('createbill') && (
                   <button
                     onClick={() => { setCurrentView('createbill'); setSelectedPatient(null); setIsMobileMenuOpen(false); }}
