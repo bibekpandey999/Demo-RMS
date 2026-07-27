@@ -43,7 +43,7 @@ const STAFF_ROLES = [
 // have a dev-server proxy set up. Every other part of this app talks to
 // the backend at this absolute URL, so StaffManager now matches it.
 // Move this to an env var when you deploy: import.meta.env.VITE_API_URL
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://rms-0wk0.onrender.com/api';
 
 const api = axios.create({ baseURL: API_BASE_URL });
 api.interceptors.request.use((config) => {

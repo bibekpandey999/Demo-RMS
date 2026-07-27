@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 
-const API_BASE = "http://localhost:5000/api/tables";
+const API_BASE = "https://rms-0wk0.onrender.com/api/tables";
 
 interface TableItem {
   id: string;

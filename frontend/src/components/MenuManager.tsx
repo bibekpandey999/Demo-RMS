@@ -19,7 +19,7 @@ import { TRANSLATIONS } from '../translations';
 // CONFIG
 // ==========================================
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://rms-0wk0.onrender.com';
 const MENU_URL = `${API_BASE}/api/menu`;
 
 const CATEGORY_OPTIONS = ['Appetizer', 'Main Course', 'Dessert', 'Beverage', 'Side', 'Other'];
