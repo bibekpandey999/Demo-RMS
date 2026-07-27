@@ -9,7 +9,7 @@ interface OrderItem {
   itemPrice: number;
   quantity: number;
 }
-  
+
 interface Order {
   id: string;
   _id: string;
@@ -43,15 +43,10 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch ALL orders — do not filter by restaurantId at the API level,
-      // since the stored value ("9898") won't match a pharmacy name string.
-      // We filter client-side below where needed, or you can pass the
-      // correct restaurantId once you confirm what should map to it.
       const url = `${API_BASE_URL}/orders`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
-        console.log("Raw orders:", data.data);
         setOrders(data.data);
       } else {
         setError(data.message || "Failed to fetch orders.");
@@ -87,25 +82,31 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
     });
   };
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
+  // Group completed orders by date -> one row per day
+  const dailySummaries = useMemo(() => {
+    const map: Record<string, { date: string; orders: Order[]; totalAmount: number; orderCount: number }> = {};
+    completedOrders.forEach((order) => {
+      const dateKey = formatDate(order.createdAt);
+      if (!map[dateKey]) {
+        map[dateKey] = { date: dateKey, orders: [], totalAmount: 0, orderCount: 0 };
+      }
+      map[dateKey].orders.push(order);
+      map[dateKey].totalAmount += Number(order.totalAmount) || 0;
+      map[dateKey].orderCount += 1;
     });
-  };
+    return Object.values(map).sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [completedOrders]);
 
-  const handleViewBill = (dateStr: string) => {
-    setSelectedDate(formatDate(dateStr));
+  const handleViewBill = (dateKey: string) => {
+    setSelectedDate(dateKey);
     setShowBill(true);
   };
 
   const ordersForSelectedDate = useMemo(() => {
     if (!selectedDate) return [];
-    return completedOrders.filter(
-      (o) => formatDate(o.createdAt) === selectedDate
-    );
+    return completedOrders.filter((o) => formatDate(o.createdAt) === selectedDate);
   }, [completedOrders, selectedDate]);
 
   const aggregatedItems = useMemo(() => {
@@ -149,13 +150,8 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
         <head>
           <title>Sales Bill</title>
           <style>
-            @page {
-              size: 80mm auto;
-              margin: 0;
-            }
-            * {
-              box-sizing: border-box;
-            }
+            @page { size: 80mm auto; margin: 0; }
+            * { box-sizing: border-box; }
             body {
               width: 80mm;
               margin: 0;
@@ -166,36 +162,14 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
             }
             .center { text-align: center; }
             .bold { font-weight: bold; }
-            .divider {
-              border-top: 1px dashed #000;
-              margin: 6px 0;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 11px;
-            }
-            th, td {
-              text-align: left;
-              padding: 2px 0;
-            }
-            th:last-child, td:last-child {
-              text-align: right;
-            }
-            .item-row td {
-              padding: 3px 0;
-            }
-            .total-row {
-              font-weight: bold;
-              font-size: 13px;
-            }
-            .header-title {
-              font-size: 16px;
-              font-weight: bold;
-            }
-            .small {
-              font-size: 10px;
-            }
+            .divider { border-top: 1px dashed #000; margin: 6px 0; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th, td { text-align: left; padding: 2px 0; }
+            th:last-child, td:last-child { text-align: right; }
+            .item-row td { padding: 3px 0; }
+            .total-row { font-weight: bold; font-size: 13px; }
+            .header-title { font-size: 16px; font-weight: bold; }
+            .small { font-size: 10px; }
           </style>
         </head>
         <body>
@@ -228,9 +202,9 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4 text-gray-800">
-        Completed & Served Orders
+        Daily Sales (Completed Orders)
       </h1>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
@@ -241,22 +215,10 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
                 Date
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                Time
+                Total Orders
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                Customer
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                Table
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                Items
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                Total
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                Status
+                Total Sales
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
                 Bill
@@ -264,41 +226,27 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {completedOrders.length === 0 ? (
+            {dailySummaries.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
                   No completed or served orders found.
                 </td>
               </tr>
             ) : (
-              completedOrders.map((order) => (
-                <tr key={order._id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {formatDisplayDate(order.createdAt)}
+              dailySummaries.map((day) => (
+                <tr key={day.date} className="hover:bg-gray-50 transition">
+                  <td className="px-4 py-3 text-sm text-gray-700 font-medium">
+                    {formatDisplayDate(day.date)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
-                    {formatTime(order.createdAt)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {order.customerName}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {order.tableNumber}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {order.items?.map((i) => i.itemName).join(", ")}
+                    {day.orderCount}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700 font-medium">
-                    Rs. {order.totalAmount}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 capitalize">
-                      {order.orderStatus}
-                    </span>
+                    Rs. {day.totalAmount.toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button
-                      onClick={() => handleViewBill(order.createdAt)}
+                      onClick={() => handleViewBill(day.date)}
                       className="inline-flex items-center justify-center p-2 rounded-full hover:bg-orange-100 text-orange-600 transition"
                       title="View day's sales bill"
                     >
