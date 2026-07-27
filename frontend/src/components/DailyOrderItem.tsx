@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { X, Printer, Receipt } from "lucide-react";
 
+const API_BASE_URL = 'https://rms-0wk0.onrender.com/api';
+
 interface OrderItem {
-  name: string;
+  itemName: string;
+  description?: string;
+  itemPrice: number;
   quantity: number;
-  price?: number;
 }
 
 interface Order {
@@ -36,40 +39,39 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
     fetchOrders();
   }, [restaurantId]);
 
-  const API_BASE_URL = 'https://rms-0wk0.onrender.com/api'; 
-
-const fetchOrders = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    const url = restaurantId
-      ? `${API_BASE_URL}/orders?restaurantId=${restaurantId}`
-      : `${API_BASE_URL}/orders`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.success) {
-  console.log("Raw orders:", data.data.map(o => o.orderStatus));
-  setOrders(data.data);
-}else {
-      setError(data.message || "Failed to fetch orders.");
+  const fetchOrders = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch ALL orders — do not filter by restaurantId at the API level,
+      // since the stored value ("9898") won't match a pharmacy name string.
+      // We filter client-side below where needed, or you can pass the
+      // correct restaurantId once you confirm what should map to it.
+      const url = `${API_BASE_URL}/orders`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success) {
+        console.log("Raw orders:", data.data);
+        setOrders(data.data);
+      } else {
+        setError(data.message || "Failed to fetch orders.");
+      }
+    } catch (err) {
+      console.error("Fetch orders error:", err);
+      setError("Error fetching orders data.");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Fetch orders error:", err);
-    setError("Error fetching orders data.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-  // Only completed & served orders
-const completedOrders = useMemo(
-  () =>
-    orders.filter((o) => {
-      const status = o.orderStatus?.toLowerCase().trim();
-      return status && !["cancelled", "canceled", "pending"].includes(status);
-    }),
-  [orders]
-);
+  const completedOrders = useMemo(
+    () =>
+      orders.filter((o) => {
+        const status = o.orderStatus?.toLowerCase().trim();
+        return status === "completed" || status === "served";
+      }),
+    [orders]
+  );
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -99,7 +101,6 @@ const completedOrders = useMemo(
     setShowBill(true);
   };
 
-  // Orders for the selected date
   const ordersForSelectedDate = useMemo(() => {
     if (!selectedDate) return [];
     return completedOrders.filter(
@@ -107,14 +108,13 @@ const completedOrders = useMemo(
     );
   }, [completedOrders, selectedDate]);
 
-  // Aggregate items sold for the selected date -> { "Egg Noodles": 7, ... }
   const aggregatedItems = useMemo(() => {
     const map: Record<string, { qty: number; price: number; total: number }> = {};
     ordersForSelectedDate.forEach((order) => {
       order.items?.forEach((item) => {
-        const name = item.name;
+        const name = item.itemName;
         const qty = Number(item.quantity) || 0;
-        const price = Number(item.price) || 0;
+        const price = Number(item.itemPrice) || 0;
         if (!map[name]) {
           map[name] = { qty: 0, price, total: 0 };
         }
@@ -286,7 +286,7 @@ const completedOrders = useMemo(
                     {order.tableNumber}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
-                    {order.items?.map((i) => i.name).join(", ")}
+                    {order.items?.map((i) => i.itemName).join(", ")}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700 font-medium">
                     Rs. {order.totalAmount}
@@ -312,11 +312,9 @@ const completedOrders = useMemo(
         </table>
       </div>
 
-      {/* Bill Modal */}
       {showBill && selectedDate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-sm w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
               <h2 className="font-semibold text-gray-800">Sales Bill</h2>
               <button
@@ -327,7 +325,6 @@ const completedOrders = useMemo(
               </button>
             </div>
 
-            {/* Printable 80mm bill area */}
             <div className="p-4 flex justify-center bg-gray-50">
               <div
                 id="bill-print-area"
@@ -405,7 +402,6 @@ const completedOrders = useMemo(
               </div>
             </div>
 
-            {/* Actions */}
             <div className="p-4 border-t border-gray-200 flex gap-2 sticky bottom-0 bg-white">
               <button
                 onClick={() => setShowBill(false)}
