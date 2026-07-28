@@ -428,44 +428,50 @@ const handleCreateBill = async () => {
       restaurantId,
     };
 
-    try {
-      const res = await fetch(BILLS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+   try {
+  const res = await fetch(BILLS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
 
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.message || 'Failed to create bill.');
-      }
+  if (!res.ok || !data?.success) {
+    throw new Error(data?.message || 'Failed to create bill.');
+  }
 
-      try {
-        await fetch(`${ORDERS_URL}/${selectedOrder._id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...selectedOrder,
-            paymentStatus: isPending ? 'Pending' : 'Paid',
-            orderStatus: 'Completed',
-          }),
-        });
-      } catch {
-        /* non-blocking */
-      }
+  try {
+    await fetch(`${ORDERS_URL}/${selectedOrder._id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...selectedOrder,
+        paymentStatus: isPending ? 'Pending' : 'Paid',
+        orderStatus: 'Completed',
+      }),
+    });
+  } catch {
+    /* non-blocking */
+  }
 
-      setServedOrders((prev) => prev.filter((o) => o._id !== selectedOrder._id));
-      setCreatedBill(data.data || payload);
-      setSelectedOrder(null);
-      setPaymentMethod(null);
-      setDiscountPercent(0);
-      setVatRate(DEFAULT_VAT_RATE);
-    } catch (err: any) {
-      setError(err.message || 'Could not save the bill. Please try again.');
-      window.setTimeout(() => setError(''), 5000);
-    } finally {
-      setSubmitting(false);
-    }
+  setServedOrders((prev) => prev.filter((o) => o._id !== selectedOrder._id));
+
+  // Only show the printable bill modal when payment is actually completed,
+  // not when it's marked Pending.
+  if (!isPending) {
+    setCreatedBill(data.data || payload);
+  }
+
+  setSelectedOrder(null);
+  setPaymentMethod(null);
+  setDiscountPercent(0);
+  setVatRate(DEFAULT_VAT_RATE);
+} catch (err: any) {
+  setError(err.message || 'Could not save the bill. Please try again.');
+  window.setTimeout(() => setError(''), 5000);
+} finally {
+  setSubmitting(false);
+}
   };
 
   return (
