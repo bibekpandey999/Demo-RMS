@@ -428,6 +428,7 @@ const handleCreateBill = async () => {
       vatCollected,
       grandTotal,
       restaurantId,
+       orderId: selectedOrder._id,
     };
 
    try {

@@ -11,6 +11,7 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://rms-0wk0.onrender.com';
 const BILLS_URL = `${API_BASE}/api/bills`;
+const ORDERS_URL = `${API_BASE}/api/orders`;
 
 const getLoggedInUser = () => {
   try {
@@ -32,6 +33,7 @@ interface BillItem {
 interface Bill {
   _id: string;
   id?: string;
+  orderId?: string; 
   restaurantName: string;
   location?: string;
   panOrVat?: string;
@@ -85,6 +87,7 @@ interface GroupedPending {
   key: string;
   billTo: string;
   billIds: string[];
+    orderIds: string[];
   bills: Bill[];
   tableNumbers: string[];
   mergedItems: BillItem[];
@@ -147,24 +150,25 @@ function groupPendingBills(bills: Bill[]): GroupedPending[] {
       new Set(groupBills.map((b) => b.tableNumber).filter(Boolean) as string[])
     );
 
-    result.push({
-      key,
-      billTo: groupBills[0].billTo,
-      billIds: groupBills.map((b) => b._id),
-      bills: groupBills,
-      tableNumbers,
-      mergedItems,
-      subtotal,
-      discount,
-      taxableAmount,
-      vatCollected,
-      grandTotal,
-      earliestDate: sortedByDate[0]?.date || sortedByDate[0]?.createdAt || new Date().toISOString(),
-      restaurantId: groupBills[0].restaurantId,
-      restaurantName: groupBills[0].restaurantName,
-      location: groupBills[0].location,
-      panOrVat: groupBills[0].panOrVat,
-    });
+  result.push({
+  key,
+  billTo: groupBills[0].billTo,
+  billIds: groupBills.map((b) => b._id),
+  orderIds: Array.from(new Set(groupBills.map((b) => b.orderId).filter(Boolean) as string[])), // ADD THIS
+  bills: groupBills,
+  tableNumbers,
+  mergedItems,
+  subtotal,
+  discount,
+  taxableAmount,
+  vatCollected,
+  grandTotal,
+  earliestDate: sortedByDate[0]?.date || sortedByDate[0]?.createdAt || new Date().toISOString(),
+  restaurantId: groupBills[0].restaurantId,
+  restaurantName: groupBills[0].restaurantName,
+  location: groupBills[0].location,
+  panOrVat: groupBills[0].panOrVat,
+});
   });
 
   // Most recently active customer first
@@ -532,13 +536,9 @@ export default function UnpaidBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
     setSubmitting(true);
     setError('');
 
-    // Keep a reference to the group being paid — we still want to show its
-    // receipt even after it's removed from allBills / selectedGroup below.
     const groupBeingPaid = selectedGroup;
 
     try {
-      // Flip every bill in this customer's pending group over to the chosen
-      // payment method, one PATCH per bill (backend has no bulk endpoint).
       const results = await Promise.allSettled(
         groupBeingPaid.billIds.map((id) =>
           fetch(`${BILLS_URL}/${id}`, {
@@ -562,12 +562,33 @@ export default function UnpaidBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
         );
       }
 
-      // Remove this customer's bills from local state
+      // Also mark every linked order as Paid
+      const orderResults = await Promise.allSettled(
+        groupBeingPaid.orderIds.map((orderId) =>
+          fetch(`${ORDERS_URL}/${orderId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentStatus: 'Paid' }),
+          }).then(async (res) => {
+            const data = await res.json();
+            if (!res.ok || !data?.success) {
+              throw new Error(data?.message || `Failed to update order ${orderId}`);
+            }
+            return data;
+          })
+        )
+      );
+
+      const orderFailures = orderResults.filter((r) => r.status === 'rejected');
+      if (orderFailures.length > 0) {
+        console.error('Some linked orders failed to update:', orderFailures);
+        // Non-fatal: bills are already settled, so we don't block the receipt.
+      }
+
       setAllBills((prev) => prev.filter((b) => !groupBeingPaid.billIds.includes(b._id)));
       setSelectedKey(null);
       setPaymentMethod(null);
 
-      // Show the "Paid" receipt modal automatically
       setPrintGroup(groupBeingPaid);
       setReceiptPaymentMethod(paymentMethod);
     } catch (err: any) {

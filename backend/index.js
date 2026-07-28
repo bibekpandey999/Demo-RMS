@@ -544,7 +544,8 @@ app.post("/api/bills", async (req, res) => {
             taxableAmount: parseNum(getValue(formData.taxableAmount, 0)),
             vatCollected: parseNum(getValue(formData.vatCollected, 0)),
             grandTotal: parseNum(getValue(formData.grandTotal, 0)),
-            restaurantId: getValue(formData.restaurantId, "")
+            restaurantId: getValue(formData.restaurantId, ""),
+             orderId: getValue(formData.orderId, ""),
         });
 
         return res.status(201).json({

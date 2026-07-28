@@ -79,6 +79,9 @@ const restaurantBillingSchema = mongoose.Schema({
         type: String,
         required: true,
     },
+    orderId: {
+    type: String,
+},
 },
 {
     timestamps: true,
