@@ -638,7 +638,7 @@ export default function App() {
         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
     }`}
 
-    {canAccess('unpaidbill') && (
+   {canAccess('unpaidbill') && (
               <button
                 onClick={() => { setCurrentView('unpaidbill'); setSelectedPatient(null); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
@@ -651,11 +651,6 @@ export default function App() {
                 <span>{lang === 'en' ? 'Pending Bills' : 'बाँकी बिलहरू'}</span>
               </button>
             )}
-  >
-    <ClipboardList className={`h-4.5 w-4.5 ${currentView === 'totalorder' ? 'text-teal-600' : 'text-gray-400'}`} />
-    <span>{lang === 'en' ? 'Total Sales' : 'कुल बिक्री'}</span>
-  </button>
-)}
 
             {canAccess('createbill') && (
               <button
