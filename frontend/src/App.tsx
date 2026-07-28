@@ -629,7 +629,7 @@ export default function App() {
               </button>
             )}
 
-            {canAccess('totalorder') && (
+          {canAccess('totalorder') && (
   <button
     onClick={() => { setCurrentView('totalorder'); setSelectedPatient(null); }}
     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
@@ -637,8 +637,13 @@ export default function App() {
         ? 'bg-teal-50 text-teal-800'
         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
     }`}
+  >
+    <ClipboardList className={`h-4.5 w-4.5 ${currentView === 'totalorder' ? 'text-teal-600' : 'text-gray-400'}`} />
+    <span>{lang === 'en' ? 'Total Sales' : 'कुल बिक्री'}</span>
+  </button>
+)}
 
-   {canAccess('unpaidbill') && (
+{canAccess('unpaidbill') && (
               <button
                 onClick={() => { setCurrentView('unpaidbill'); setSelectedPatient(null); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
