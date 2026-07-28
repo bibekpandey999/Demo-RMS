@@ -50,10 +50,10 @@ const createOrderSchema = mongoose.Schema({
         default: "Pending",
     },
     paymentStatus: {
-        type: String,
-        enum: ["Unpaid", "Paid", "Refunded"],
-        default: "Unpaid",
-    },
+    type: String,
+    enum: ["Unpaid", "Paid", "Refunded", "Pending"],
+    default: "Unpaid",
+},
 },
 {
     timestamps: true,
