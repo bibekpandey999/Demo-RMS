@@ -606,7 +606,45 @@ app.get("/api/bills", async (req, res) => {
     }
 });
 
+app.patch("/api/bills/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { paymentMethod } = req.body;
 
+        if (!paymentMethod) {
+            return res.status(400).json({
+                success: false,
+                message: "paymentMethod is required."
+            });
+        }
+
+        const updatedBill = await Bill.findByIdAndUpdate(
+            id,
+            { paymentMethod },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedBill) {
+            return res.status(404).json({
+                success: false,
+                message: "Bill not found."
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Bill payment status updated.",
+            data: updatedBill
+        });
+    } catch (error) {
+        console.error("🔴 BILL PATCH CRASH:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update bill.",
+            error: error.message
+        });
+    }
+});
 
 
 

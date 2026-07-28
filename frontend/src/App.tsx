@@ -14,6 +14,7 @@ import Tables from './components/Table';
 import KitchenDisplay from './components/KitchenDisplay';
 import CreateBill from './components/CreateBill';
 import TotalOrder from './components/DailyOrderItem';
+import UnpaidBill from './components/UnPaidBill';
 
 import Dashboard from './components/Dashboard';
 import CreateOrder from './components/CreateOrder';
@@ -38,7 +39,7 @@ type StaffRole =
   | 'Kitchen Staff'
   | 'Cashier';
 
-  type AppView = 'dashboard' | 'pos' | 'inventory' | 'billing' | 'staff' | 'settings' | 'orders' | 'tables' | 'kitchen' | 'createbill' | 'totalorder';
+type AppView = 'dashboard' | 'pos' | 'inventory' | 'billing' | 'staff' | 'settings' | 'orders' | 'tables' | 'kitchen' | 'createbill' | 'totalorder' | 'unpaidbill';
 
 interface RoleConfig {
   label: StaffRole;
@@ -54,7 +55,7 @@ interface RoleConfig {
 const ROLE_ACCESS: Record<StaffRole, RoleConfig> = {
   Manager: {
     label: 'Manager',
-    pages: ['dashboard', 'pos', 'inventory', 'billing', 'staff', 'settings', 'orders', 'tables', 'kitchen', 'createbill','totalorder'],
+    pages: ['dashboard', 'pos', 'inventory', 'billing', 'staff', 'settings', 'orders', 'tables', 'kitchen', 'createbill', 'totalorder', 'unpaidbill'],
     defaultView: 'dashboard',
   },
   Waiter: {
@@ -69,7 +70,7 @@ const ROLE_ACCESS: Record<StaffRole, RoleConfig> = {
   },
   Cashier: {
     label: 'Cashier',
-    pages: ['createbill', 'tables', 'billing','totalorder'],
+    pages: ['createbill', 'tables', 'billing', 'totalorder', 'unpaidbill'],
     defaultView: 'createbill',
   },
 };
@@ -636,6 +637,20 @@ export default function App() {
         ? 'bg-teal-50 text-teal-800'
         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
     }`}
+
+    {canAccess('unpaidbill') && (
+              <button
+                onClick={() => { setCurrentView('unpaidbill'); setSelectedPatient(null); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  currentView === 'unpaidbill'
+                    ? 'bg-teal-50 text-teal-800'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <ClipboardPlus className={`h-4.5 w-4.5 ${currentView === 'unpaidbill' ? 'text-teal-600' : 'text-gray-400'}`} />
+                <span>{lang === 'en' ? 'Pending Bills' : 'बाँकी बिलहरू'}</span>
+              </button>
+            )}
   >
     <ClipboardList className={`h-4.5 w-4.5 ${currentView === 'totalorder' ? 'text-teal-600' : 'text-gray-400'}`} />
     <span>{lang === 'en' ? 'Total Sales' : 'कुल बिक्री'}</span>
@@ -856,6 +871,10 @@ export default function App() {
           {currentView === 'totalorder' && canAccess('totalorder') && (
   <TotalOrder restaurantId={activePharmacyName} />
 )}
+
+{currentView === 'unpaidbill' && canAccess('unpaidbill') && (
+            <UnpaidBill lang={lang} />
+          )}
 
           {currentView === 'kitchen' && canAccess('kitchen') && (
             <KitchenDisplay />
@@ -1106,6 +1125,18 @@ export default function App() {
     <span>{lang === 'en' ? 'Total Sales' : 'कुल बिक्री'}</span>
   </button>
 )}
+
+{canAccess('unpaidbill') && (
+                  <button
+                    onClick={() => { setCurrentView('unpaidbill'); setSelectedPatient(null); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                      currentView === 'unpaidbill' ? 'bg-teal-50 text-teal-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ClipboardPlus className={`h-4.5 w-4.5 ${currentView === 'unpaidbill' ? 'text-teal-600' : 'text-gray-400'}`} />
+                    <span>{lang === 'en' ? 'Pending Bills' : 'बाँकी बिलहरू'}</span>
+                  </button>
+                )}
 
                 {canAccess('createbill') && (
                   <button
