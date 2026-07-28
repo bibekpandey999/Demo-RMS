@@ -148,7 +148,7 @@ export default function AdminDashboard({ user, lang, onLogout }: AdminDashboardP
   useEffect(() => {
     fetchAllPharmacies();
   }, []);
-
+  
   const showNotice = (type: 'success' | 'error', msg: string) => {
     setNotification({ type, msg });
     setTimeout(() => setNotification(null), 4000);
