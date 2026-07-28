@@ -25,11 +25,24 @@ interface Order {
   createdAt: string;
 }
 
+const getLoggedInUser = () => {
+  try {
+    const raw = localStorage.getItem('pharmacyUser');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
 interface TotalOrderProps {
   restaurantId?: string;
 }
 
-const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
+const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId: propRestaurantId }) => {
+  const user = getLoggedInUser();
+  const restaurantId = propRestaurantId || (user?.id ? String(user.id) : '');
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +57,9 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
     setLoading(true);
     setError(null);
     try {
-      const url = `${API_BASE_URL}/orders`;
+      const url = restaurantId
+        ? `${API_BASE_URL}/orders?restaurantId=${encodeURIComponent(restaurantId)}`
+        : `${API_BASE_URL}/orders`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
@@ -64,9 +79,10 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
     () =>
       orders.filter((o) => {
         const status = o.orderStatus?.toLowerCase().trim();
-        return status === "completed" || status === "served";
+        const matchesRestaurant = !restaurantId || String(o.restaurantId) === String(restaurantId);
+        return (status === "completed" || status === "served") && matchesRestaurant;
       }),
-    [orders]
+    [orders, restaurantId]
   );
 
   const formatDate = (dateStr: string) => {
