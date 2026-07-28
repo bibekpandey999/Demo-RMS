@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Receipt, Users, Hash, Wallet, Banknote, Smartphone, CreditCard,
   CheckCircle2, X, Printer, Loader2, AlertTriangle, RefreshCw,
-  ClipboardList, ShoppingBag, PlusCircle, Percent,
+  ClipboardList, ShoppingBag, PlusCircle, Percent, Clock,
 } from 'lucide-react';
 
 // ==========================================
@@ -53,13 +53,14 @@ interface BillItem {
   total: number;
 }
 
-type PaymentMethod = 'Cash' | 'eSewa' | 'Khalti' | 'IMEPay';
+type PaymentMethod = 'Cash' | 'eSewa' | 'Khalti' | 'IMEPay' | 'Pending';
 
 const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: React.ElementType; accent: string }[] = [
   { id: 'Cash', label: 'Cash', icon: Banknote, accent: 'emerald' },
   { id: 'eSewa', label: 'eSewa', icon: Smartphone, accent: 'green' },
   { id: 'Khalti', label: 'Khalti', icon: Wallet, accent: 'purple' },
   { id: 'IMEPay', label: 'IMEPay', icon: CreditCard, accent: 'sky' },
+  { id: 'Pending', label: 'Pending', icon: Clock, accent: 'amber' },
 ];
 
 const ACCENT_CLASSES: Record<string, { border: string; bg: string; text: string; ring: string }> = {
@@ -67,6 +68,7 @@ const ACCENT_CLASSES: Record<string, { border: string; bg: string; text: string;
   green: { border: 'border-green-500', bg: 'bg-green-50', text: 'text-green-700', ring: 'ring-green-500/20' },
   purple: { border: 'border-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', ring: 'ring-purple-500/20' },
   sky: { border: 'border-sky-500', bg: 'bg-sky-50', text: 'text-sky-700', ring: 'ring-sky-500/20' },
+  amber: { border: 'border-amber-500', bg: 'bg-amber-50', text: 'text-amber-700', ring: 'ring-amber-500/20' },
 };
 
 function money(n: number): string {
@@ -399,10 +401,12 @@ export default function CreateBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
 
   const canCreateBill = !!selectedOrder && !!paymentMethod && !submitting;
 
-  const handleCreateBill = async () => {
+const handleCreateBill = async () => {
     if (!selectedOrder || !paymentMethod) return;
     setSubmitting(true);
     setError('');
+
+    const isPending = paymentMethod === 'Pending';
 
     const payload = {
       restaurantName,
@@ -436,15 +440,13 @@ export default function CreateBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
         throw new Error(data?.message || 'Failed to create bill.');
       }
 
-      // Mark the order as Paid + Completed on the floor's order list too, best-effort —
-      // failure here shouldn't block the bill that already saved successfully.
       try {
         await fetch(`${ORDERS_URL}/${selectedOrder._id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...selectedOrder,
-            paymentStatus: 'Paid',
+            paymentStatus: isPending ? 'Pending' : 'Paid',
             orderStatus: 'Completed',
           }),
         });
