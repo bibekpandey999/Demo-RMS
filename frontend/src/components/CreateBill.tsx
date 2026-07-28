@@ -442,19 +442,20 @@ const handleCreateBill = async () => {
     throw new Error(data?.message || 'Failed to create bill.');
   }
 
-  const orderUpdateRes = await fetch(`${ORDERS_URL}/${selectedOrder._id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...selectedOrder,
-      paymentStatus: isPending ? 'Pending' : 'Paid',
-      orderStatus: 'Completed',
-    }),
-  });
+const orderUpdateRes = await fetch(`${ORDERS_URL}/${selectedOrder._id}`, {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    paymentStatus: isPending ? 'Pending' : 'Paid',
+    orderStatus: 'Completed',
+  }),
+});
 
-  if (!orderUpdateRes.ok) {
-    throw new Error('Bill was created but order status failed to update. Please refresh and check.');
-  }
+if (!orderUpdateRes.ok) {
+  const errText = await orderUpdateRes.text().catch(() => '');
+  console.error('Order update failed:', orderUpdateRes.status, errText);
+  throw new Error('Bill was created but order status failed to update. Please refresh and check.');
+}
 
   setServedOrders((prev) => prev.filter((o) => o._id !== selectedOrder._id));
 
