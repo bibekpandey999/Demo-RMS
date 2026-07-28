@@ -35,25 +35,27 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showBill, setShowBill] = useState(false);
 
-  // Resolve the current restaurant's id from localStorage (pharmacyUser),
-  // falling back to the prop if provided.
-  const currentRestaurantId = useMemo(() => {
-    if (restaurantId) return restaurantId;
+  // Resolve the current restaurant's id and _id from localStorage (pharmacyUser)
+  const { currentRestaurantId, currentRestaurantIdAlt } = useMemo(() => {
+    if (restaurantId) return { currentRestaurantId: restaurantId, currentRestaurantIdAlt: null };
     try {
       const raw = localStorage.getItem("pharmacyUser");
-      if (!raw) return null;
+      if (!raw) return { currentRestaurantId: null, currentRestaurantIdAlt: null };
       const parsed = JSON.parse(raw);
-      // "id" is the restaurant id per the stored user object (e.g. "9797")
-      return parsed?.id ?? parsed?._id ?? null;
+      // "id" is the short restaurant id (e.g. "9797"), "_id" is the Mongo ObjectId
+      return {
+        currentRestaurantId: parsed?.id ?? null,
+        currentRestaurantIdAlt: parsed?._id ?? null,
+      };
     } catch (e) {
       console.error("Failed to parse pharmacyUser from localStorage:", e);
-      return null;
+      return { currentRestaurantId: null, currentRestaurantIdAlt: null };
     }
   }, [restaurantId]);
 
   useEffect(() => {
     fetchOrders();
-  }, [currentRestaurantId]);
+  }, [currentRestaurantId, currentRestaurantIdAlt]);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -75,13 +77,26 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
     }
   };
 
-  // Only orders belonging to the logged-in restaurant
+  // Debug: check console to see which field actually matches
+  useEffect(() => {
+    if (orders.length > 0) {
+      console.log("currentRestaurantId (id):", currentRestaurantId);
+      console.log("currentRestaurantIdAlt (_id):", currentRestaurantIdAlt);
+      console.log("sample order restaurantId values:", orders.slice(0, 5).map(o => o.restaurantId));
+    }
+  }, [orders, currentRestaurantId, currentRestaurantIdAlt]);
+
+  // Only orders belonging to the logged-in restaurant (match on either id or _id)
   const restaurantOrders = useMemo(() => {
-    if (!currentRestaurantId) return [];
-    return orders.filter(
-      (o) => String(o.restaurantId) === String(currentRestaurantId)
-    );
-  }, [orders, currentRestaurantId]);
+    if (!currentRestaurantId && !currentRestaurantIdAlt) return [];
+    return orders.filter((o) => {
+      const orderRid = String(o.restaurantId ?? "");
+      return (
+        (currentRestaurantId && orderRid === String(currentRestaurantId)) ||
+        (currentRestaurantIdAlt && orderRid === String(currentRestaurantIdAlt))
+      );
+    });
+  }, [orders, currentRestaurantId, currentRestaurantIdAlt]);
 
   const completedOrders = useMemo(
     () =>
@@ -225,7 +240,7 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
     );
   }
 
-  if (!currentRestaurantId) {
+  if (!currentRestaurantId && !currentRestaurantIdAlt) {
     return (
       <div className="p-6 text-center text-red-600 bg-red-50 rounded-lg">
         Unable to identify restaurant. Please log in again.
