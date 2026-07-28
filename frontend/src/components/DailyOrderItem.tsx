@@ -38,10 +38,10 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
   // Resolve the current restaurant's id and _id from localStorage (pharmacyUser)
   const { currentRestaurantId, currentRestaurantIdAlt } = useMemo(() => {
   if (restaurantId) return { currentRestaurantId: restaurantId, currentRestaurantIdAlt: null };
-  try {
+  try  {
     const raw = localStorage.getItem("pharmacyUser");
     if (!raw) return { currentRestaurantId: null, currentRestaurantIdAlt: null };
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw); 
     return {
       currentRestaurantId: parsed?.id ?? null,
       currentRestaurantIdAlt: parsed?._id ?? null,
