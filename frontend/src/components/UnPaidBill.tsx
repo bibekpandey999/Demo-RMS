@@ -236,20 +236,26 @@ function PendingGroupCard({
 
 // ==========================================
 // PRINTABLE MERGED BILL MODAL (80mm thermal)
+// Used both for "Print" (pending) and the
+// post-payment receipt (paidPaymentMethod set)
 // ==========================================
 
 function MergedBillModal({
   group,
   lang,
   onClose,
+  paidPaymentMethod,
 }: {
   group: GroupedPending;
   lang: 'en' | 'ne';
   onClose: () => void;
+  paidPaymentMethod?: PaymentMethod | null;
 }) {
   const invoiceLabel = `PEND-${group.billIds
     .map((id) => id.slice(-4))
     .join('-')}`;
+
+  const isPaidReceipt = !!paidPaymentMethod;
 
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[60] animate-fade-in">
@@ -302,13 +308,28 @@ function MergedBillModal({
       <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-6 shadow-2xl border border-gray-100">
         <div className="flex justify-between items-center border-b border-gray-100 pb-3">
           <span className="font-bold text-gray-900 flex items-center gap-1.5 text-sm">
-            <Receipt className="h-5 w-5 text-amber-600" />
-            {lang === 'en' ? 'Combined Pending Bill' : 'संयुक्त बाँकी बिल'}
+            {isPaidReceipt ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            ) : (
+              <Receipt className="h-5 w-5 text-amber-600" />
+            )}
+            {isPaidReceipt
+              ? (lang === 'en' ? 'Payment Successful' : 'भुक्तानी सफल')
+              : (lang === 'en' ? 'Combined Pending Bill' : 'संयुक्त बाँकी बिल')}
           </span>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-950 cursor-pointer">
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {isPaidReceipt && (
+          <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-2.5 text-xs font-semibold text-emerald-700">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            {lang === 'en'
+              ? `Paid via ${paidPaymentMethod} • ${group.billIds.length} bill(s) settled`
+              : `${paidPaymentMethod} मार्फत भुक्तानी भयो • ${group.billIds.length} बिल मिलान भयो`}
+          </div>
+        )}
 
         <div
           id="printable-merged-bill"
@@ -321,7 +342,9 @@ function MergedBillModal({
             <p className="text-[10px] text-gray-500">{group.location}</p>
             <p className="font-semibold text-[10px]">PAN / VAT No: {group.panOrVat}</p>
             <h4 className="text-xs font-extrabold text-gray-950 uppercase border-y border-gray-200 py-1 tracking-wider mt-2">
-              {lang === 'en' ? 'Combined Invoice' : 'संयुक्त बिजक'}
+              {isPaidReceipt
+                ? (lang === 'en' ? 'Payment Receipt' : 'भुक्तानी रसिद')
+                : (lang === 'en' ? 'Combined Invoice' : 'संयुक्त बिजक')}
             </h4>
           </div>
 
@@ -346,6 +369,12 @@ function MergedBillModal({
                 {group.billIds.length} {lang === 'en' ? 'bill(s)' : 'बिल(हरू)'}
               </span>
             </div>
+            {isPaidReceipt && (
+              <div className="col-span-2">
+                {lang === 'en' ? 'Payment Method' : 'भुक्तानी विधि'}:{' '}
+                <span className="font-semibold text-gray-950">{paidPaymentMethod}</span>
+              </div>
+            )}
           </div>
 
           <table className="w-full text-[11px] leading-relaxed">
@@ -394,6 +423,12 @@ function MergedBillModal({
               <span>GRAND TOTAL:</span>
               <span className="font-mono text-amber-700">NPR {money(group.grandTotal)}</span>
             </div>
+            {isPaidReceipt && (
+              <div className="flex justify-between text-emerald-700 font-bold text-xs pt-0.5">
+                <span>STATUS:</span>
+                <span>PAID ({paidPaymentMethod})</span>
+              </div>
+            )}
           </div>
 
           <div className="pt-8 flex justify-between items-end border-t border-dashed border-gray-300">
@@ -443,7 +478,12 @@ export default function UnpaidBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Modal state: which group to show in the receipt/print modal,
+  // and — if set — which payment method it was just paid with
+  // (this is what makes the "paid" popup show automatically).
   const [printGroup, setPrintGroup] = useState<GroupedPending | null>(null);
+  const [receiptPaymentMethod, setReceiptPaymentMethod] = useState<PaymentMethod | null>(null);
 
   const fetchBills = useCallback(async () => {
     setError('');
@@ -492,11 +532,15 @@ export default function UnpaidBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
     setSubmitting(true);
     setError('');
 
+    // Keep a reference to the group being paid — we still want to show its
+    // receipt even after it's removed from allBills / selectedGroup below.
+    const groupBeingPaid = selectedGroup;
+
     try {
       // Flip every bill in this customer's pending group over to the chosen
       // payment method, one PATCH per bill (backend has no bulk endpoint).
       const results = await Promise.allSettled(
-        selectedGroup.billIds.map((id) =>
+        groupBeingPaid.billIds.map((id) =>
           fetch(`${BILLS_URL}/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -514,20 +558,29 @@ export default function UnpaidBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
       const failures = results.filter((r) => r.status === 'rejected');
       if (failures.length > 0) {
         throw new Error(
-          `${failures.length} of ${selectedGroup.billIds.length} bill(s) failed to update. Refresh and retry for those.`
+          `${failures.length} of ${groupBeingPaid.billIds.length} bill(s) failed to update. This is usually a server CORS/connection issue — refresh and retry.`
         );
       }
 
       // Remove this customer's bills from local state
-      setAllBills((prev) => prev.filter((b) => !selectedGroup.billIds.includes(b._id)));
+      setAllBills((prev) => prev.filter((b) => !groupBeingPaid.billIds.includes(b._id)));
       setSelectedKey(null);
       setPaymentMethod(null);
+
+      // Show the "Paid" receipt modal automatically
+      setPrintGroup(groupBeingPaid);
+      setReceiptPaymentMethod(paymentMethod);
     } catch (err: any) {
       setError(err.message || 'Could not update payment status. Please try again.');
-      window.setTimeout(() => setError(''), 6000);
+      window.setTimeout(() => setError(''), 8000);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const closeModal = () => {
+    setPrintGroup(null);
+    setReceiptPaymentMethod(null);
   };
 
   return (
@@ -613,7 +666,10 @@ export default function UnpaidBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
             </h2>
             {selectedGroup && (
               <button
-                onClick={() => setPrintGroup(selectedGroup)}
+                onClick={() => {
+                  setReceiptPaymentMethod(null);
+                  setPrintGroup(selectedGroup);
+                }}
                 className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 cursor-pointer"
               >
                 <Printer className="h-3.5 w-3.5" />
@@ -779,7 +835,12 @@ export default function UnpaidBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
       </div>
 
       {printGroup && (
-        <MergedBillModal group={printGroup} lang={lang} onClose={() => setPrintGroup(null)} />
+        <MergedBillModal
+          group={printGroup}
+          lang={lang}
+          onClose={closeModal}
+          paidPaymentMethod={receiptPaymentMethod}
+        />
       )}
     </div>
   );

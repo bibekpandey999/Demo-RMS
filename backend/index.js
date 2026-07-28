@@ -25,12 +25,12 @@ const allowedOrigins = [
 ];
 // CORS and JSON parsing set up immediately, not gated on DB connection
 app.use(cors({
-    origin: true, // Automatically allows any requesting frontend origin
+    origin: true,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     optionsSuccessStatus: 200
-})); 
+}));
 
 app.use(express.json());
 
