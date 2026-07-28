@@ -9,8 +9,7 @@ interface OrderItem {
   itemPrice: number;
   quantity: number;
 }
- 
-   
+
 interface Order {
   id: string;
   _id: string;
@@ -25,41 +24,42 @@ interface Order {
   createdAt: string;
 }
 
-const getLoggedInUser = () => {
-  try {
-    const raw = localStorage.getItem('pharmacyUser');
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-};
-
 interface TotalOrderProps {
   restaurantId?: string;
 }
 
-const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId: propRestaurantId }) => {
-  const user = getLoggedInUser();
-  const restaurantId = propRestaurantId || (user?.id ? String(user.id) : '');
-
+const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showBill, setShowBill] = useState(false);
 
+  // Resolve the current restaurant's id from localStorage (pharmacyUser),
+  // falling back to the prop if provided.
+  const currentRestaurantId = useMemo(() => {
+    if (restaurantId) return restaurantId;
+    try {
+      const raw = localStorage.getItem("pharmacyUser");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // "id" is the restaurant id per the stored user object (e.g. "9797")
+      return parsed?.id ?? parsed?._id ?? null;
+    } catch (e) {
+      console.error("Failed to parse pharmacyUser from localStorage:", e);
+      return null;
+    }
+  }, [restaurantId]);
+
   useEffect(() => {
     fetchOrders();
-  }, [restaurantId]);
+  }, [currentRestaurantId]);
 
   const fetchOrders = async () => {
     setLoading(true);
     setError(null);
     try {
-      const url = restaurantId
-        ? `${API_BASE_URL}/orders?restaurantId=${encodeURIComponent(restaurantId)}`
-        : `${API_BASE_URL}/orders`;
+      const url = `${API_BASE_URL}/orders`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
@@ -75,14 +75,21 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId: propRestaurantId 
     }
   };
 
+  // Only orders belonging to the logged-in restaurant
+  const restaurantOrders = useMemo(() => {
+    if (!currentRestaurantId) return [];
+    return orders.filter(
+      (o) => String(o.restaurantId) === String(currentRestaurantId)
+    );
+  }, [orders, currentRestaurantId]);
+
   const completedOrders = useMemo(
     () =>
-      orders.filter((o) => {
+      restaurantOrders.filter((o) => {
         const status = o.orderStatus?.toLowerCase().trim();
-        const matchesRestaurant = !restaurantId || String(o.restaurantId) === String(restaurantId);
-        return (status === "completed" || status === "served") && matchesRestaurant;
+        return status === "completed" || status === "served";
       }),
-    [orders, restaurantId]
+    [restaurantOrders]
   );
 
   const formatDate = (dateStr: string) => {
@@ -214,6 +221,14 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId: propRestaurantId 
     return (
       <div className="p-6 text-center text-red-600 bg-red-50 rounded-lg">
         {error}
+      </div>
+    );
+  }
+
+  if (!currentRestaurantId) {
+    return (
+      <div className="p-6 text-center text-red-600 bg-red-50 rounded-lg">
+        Unable to identify restaurant. Please log in again.
       </div>
     );
   }
