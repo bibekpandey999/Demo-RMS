@@ -37,21 +37,20 @@ const TotalOrder: React.FC<TotalOrderProps> = ({ restaurantId }) => {
 
   // Resolve the current restaurant's id and _id from localStorage (pharmacyUser)
   const { currentRestaurantId, currentRestaurantIdAlt } = useMemo(() => {
-    if (restaurantId) return { currentRestaurantId: restaurantId, currentRestaurantIdAlt: null };
-    try {
-      const raw = localStorage.getItem("pharmacyUser");
-      if (!raw) return { currentRestaurantId: null, currentRestaurantIdAlt: null };
-      const parsed = JSON.parse(raw);
-      // "id" is the short restaurant id (e.g. "9797"), "_id" is the Mongo ObjectId
-      return {
-        currentRestaurantId: parsed?.id ?? null,
-        currentRestaurantIdAlt: parsed?._id ?? null,
-      };
-    } catch (e) {
-      console.error("Failed to parse pharmacyUser from localStorage:", e);
-      return { currentRestaurantId: null, currentRestaurantIdAlt: null };
-    }
-  }, [restaurantId]);
+  if (restaurantId) return { currentRestaurantId: restaurantId, currentRestaurantIdAlt: null };
+  try {
+    const raw = localStorage.getItem("pharmacyUser");
+    if (!raw) return { currentRestaurantId: null, currentRestaurantIdAlt: null };
+    const parsed = JSON.parse(raw);
+    return {
+      currentRestaurantId: parsed?.id ?? null,
+      currentRestaurantIdAlt: parsed?._id ?? null,
+    };
+  } catch (e) {
+    console.error("Failed to parse pharmacyUser from localStorage:", e);
+    return { currentRestaurantId: null, currentRestaurantIdAlt: null };
+  }
+}, [restaurantId]);
 
   useEffect(() => {
     fetchOrders();
