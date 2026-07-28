@@ -358,7 +358,9 @@ export default function CreateBill({ lang = 'en' as 'en' | 'ne' }: { lang?: 'en'
       if (!res.ok || !result.success) {
         throw new Error(result.message || 'Failed to load orders.');
       }
-      const served: Order[] = (result.data || []).filter((o: Order) => o.orderStatus === 'Served');
+      const served: Order[] = (result.data || []).filter(
+  (o: Order) => o.orderStatus === 'Served' && o.paymentStatus !== 'Paid' && o.paymentStatus !== 'Pending'
+);
       setServedOrders(served);
     } catch (err: any) {
       setError(err.message || 'Could not connect to the server.');
@@ -440,24 +442,22 @@ const handleCreateBill = async () => {
     throw new Error(data?.message || 'Failed to create bill.');
   }
 
-  try {
-    await fetch(`${ORDERS_URL}/${selectedOrder._id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...selectedOrder,
-        paymentStatus: isPending ? 'Pending' : 'Paid',
-        orderStatus: 'Completed',
-      }),
-    });
-  } catch {
-    /* non-blocking */
+  const orderUpdateRes = await fetch(`${ORDERS_URL}/${selectedOrder._id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...selectedOrder,
+      paymentStatus: isPending ? 'Pending' : 'Paid',
+      orderStatus: 'Completed',
+    }),
+  });
+
+  if (!orderUpdateRes.ok) {
+    throw new Error('Bill was created but order status failed to update. Please refresh and check.');
   }
 
   setServedOrders((prev) => prev.filter((o) => o._id !== selectedOrder._id));
 
-  // Only show the printable bill modal when payment is actually completed,
-  // not when it's marked Pending.
   if (!isPending) {
     setCreatedBill(data.data || payload);
   }
