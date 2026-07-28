@@ -574,6 +574,7 @@ app.get("/api/bills", async (req, res) => {
             return {
                 id: bill._id,
                 _id: bill._id,
+                orderId: bill.orderId, // ADD THIS
                 restaurantName: bill.restaurantName,
                 location: bill.location,
                 panOrVat: bill.panOrVat,
@@ -606,7 +607,6 @@ app.get("/api/bills", async (req, res) => {
         });
     }
 });
-
 app.patch("/api/bills/:id", async (req, res) => {
     try {
         const { id } = req.params;
