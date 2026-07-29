@@ -655,7 +655,7 @@ app.post("/api/auth/login", async (req, res) => {
         const { pharmacyName, id, password } = req.body;
 
          if (!pharmacyName || !id || !password) {
-           return res.status(400).json({ success: false, message: "Pharmacy name, ID and password are required." });
+           return res.status(400).json({ success: false, message: "Restaurant name, ID and password are required." });
         }
 
         const pharmacy = await PharmacyUser.findOne({ id });
@@ -667,7 +667,7 @@ app.post("/api/auth/login", async (req, res) => {
         const submittedPharmacyName = pharmacyName.trim().toLowerCase();
 
         if (dbPharmacyName !== submittedPharmacyName) {
-            return res.status(401).json({ success: false, message: "Pharmacy name does not match our records." });
+            return res.status(401).json({ success: false, message: "Restaurant name does not match our records." });
         }
 
 
