@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Flame, ChefHat, Bell, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
+import { Flame, ChefHat, Bell, RefreshCw, AlertTriangle, Loader2, Printer } from 'lucide-react';
 
 // ==========================================
 // CONFIG
@@ -118,6 +118,15 @@ function formatTicketDateTime(iso?: string): string {
   });
 }
 
+// Builds a stable fingerprint of an order's items so we can tell whether
+// the item list actually changed between polls (added items, changed
+// quantities, etc), independent of whatever the backend does to updatedAt.
+function itemsSignature(order: Order): string {
+  return (order.items || [])
+    .map((i) => `${i.itemName}|${i.quantity}|${i.itemPrice}`)
+    .join('~');
+}
+
 // ==========================================
 // AUTO-PRINT: builds a kitchen-ticket HTML doc and sends it straight to
 // the browser print dialog inside a hidden iframe, no user click needed.
@@ -132,7 +141,10 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function buildTicketHtml(order: Order): string {
+// isUpdate flags the ticket as an updated order (new items added after
+// the original was fired) so the kitchen can tell it apart from a fresh
+// ticket at a glance.
+function buildTicketHtml(order: Order, isUpdate: boolean = false): string {
   const itemRows = (order.items || [])
     .map(
       (item) => `
@@ -166,6 +178,15 @@ function buildTicketHtml(order: Order): string {
     margin: 0 0 2px;
     letter-spacing: 1px;
   }
+  .update-flag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: bold;
+    border: 1px solid #000;
+    padding: 1px 6px;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
   .meta {
     font-size: 11px;
     line-height: 1.5;
@@ -198,6 +219,7 @@ function buildTicketHtml(order: Order): string {
 </head>
 <body>
   <div class="center">
+    ${isUpdate ? '<div class="update-flag">*** UPDATED ORDER ***</div><br/>' : ''}
     <h1>KITCHEN TICKET</h1>
   </div>
   <div class="meta">
@@ -223,7 +245,7 @@ function buildTicketHtml(order: Order): string {
 
 // Prints via a hidden iframe rather than window.open, so no new tab/window
 // ever appears — the ticket just goes straight to the print dialog/printer.
-function autoPrintOrder(order: Order) {
+function autoPrintOrder(order: Order, isUpdate: boolean = false) {
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -241,7 +263,7 @@ function autoPrintOrder(order: Order) {
   }
 
   doc.open();
-  doc.write(buildTicketHtml(order));
+  doc.write(buildTicketHtml(order, isUpdate));
   doc.close();
 
   const cleanup = () => {
@@ -277,11 +299,13 @@ function TicketCard({
   order,
   now,
   onAdvance,
+  onReprint,
   isUpdating,
 }: {
   order: Order;
   now: number;
   onAdvance: (order: Order, next: OrderStatus) => void;
+  onReprint: (order: Order) => void;
   isUpdating: boolean;
 }) {
   const lane = LANES.find((l) => l.status === order.orderStatus);
@@ -303,7 +327,7 @@ function TicketCard({
         </div>
       )}
 
-      {/* Ticket header: table + elapsed time */}
+      {/* Ticket header: table + elapsed time + reprint */}
       <div className="flex items-start justify-between">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-widest text-gray-400">
@@ -313,13 +337,22 @@ function TicketCard({
             {order.tableNumber}
           </p>
         </div>
-        <div className="text-right">
-          <p className="font-mono text-[11px] uppercase tracking-widest text-gray-400">
-            Fired
-          </p>
-          <p className={`font-mono text-lg font-bold leading-none mt-0.5 ${ageClass(age)}`}>
-            {formatElapsed(age)}
-          </p>
+        <div className="flex items-start gap-2">
+          <div className="text-right">
+            <p className="font-mono text-[11px] uppercase tracking-widest text-gray-400">
+              Fired
+            </p>
+            <p className={`font-mono text-lg font-bold leading-none mt-0.5 ${ageClass(age)}`}>
+              {formatElapsed(age)}
+            </p>
+          </div>
+          <button
+            onClick={() => onReprint(order)}
+            className="p-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-colors"
+            title="Print ticket again"
+          >
+            <Printer className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
@@ -397,6 +430,7 @@ function LaneColumn({
   orders,
   now,
   onAdvance,
+  onReprint,
   updatingId,
 }: {
   status: OrderStatus;
@@ -404,6 +438,7 @@ function LaneColumn({
   orders: Order[];
   now: number;
   onAdvance: (order: Order, next: OrderStatus) => void;
+  onReprint: (order: Order) => void;
   updatingId: string | null;
 }) {
   const styles = LANE_STYLES[status];
@@ -443,6 +478,7 @@ function LaneColumn({
               order={order}
               now={now}
               onAdvance={onAdvance}
+              onReprint={onReprint}
               isUpdating={updatingId === order._id}
             />
           ))
@@ -472,6 +508,11 @@ export default function KitchenDisplay() {
   // to the printer, so a ticket is never auto-printed twice across polls
   // even if it lingers in the Pending lane for several fetch cycles.
   const printedIds = useRef<Set<string>>(new Set());
+  // Tracks the items-signature we last printed for each order, so we can
+  // tell when an already-seen order comes back from a poll with new/changed
+  // items (i.e. it was edited via the Orders page) and print an update
+  // ticket for just the delta — without reprinting on every unrelated poll.
+  const printedSignatures = useRef<Map<string, string>>(new Map());
 
   // Tick every 15s so elapsed-time counters and the "running late" ring stay live
   // without re-rendering the whole board every second.
@@ -496,35 +537,61 @@ export default function KitchenDisplay() {
         ['Pending', 'Preparing', 'Ready'].includes(o.orderStatus)
       );
 
-      // Flash a brief banner when a genuinely new ticket lands, so the kitchen
-      // notices without needing to stare at the screen. Also auto-print every
-      // brand-new Pending ticket the moment it's first seen — no click needed.
       if (!isFirstLoad.current) {
+        // Brand-new tickets that have never been seen before at all.
         const newPendingTickets = kitchenOrders.filter(
           (o) => o.orderStatus === 'Pending' && !knownIds.current.has(o._id)
         );
 
-        if (newPendingTickets.length > 0) {
-          const first = newPendingTickets[0];
-          setFlash(
-            newPendingTickets.length === 1
-              ? `New order — Table ${first.tableNumber}`
-              : `${newPendingTickets.length} new orders`
-          );
+        // Tickets we HAVE seen before, but whose item list changed since the
+        // last time we printed them — this is the "order was edited and new
+        // items were added" case from the Orders page.
+        const updatedTickets = kitchenOrders.filter((o) => {
+          if (!knownIds.current.has(o._id)) return false; // handled above as "new"
+          const lastSig = printedSignatures.current.get(o._id);
+          const currentSig = itemsSignature(o);
+          return lastSig !== undefined && lastSig !== currentSig;
+        });
+
+        if (newPendingTickets.length > 0 || updatedTickets.length > 0) {
+          if (newPendingTickets.length > 0) {
+            const first = newPendingTickets[0];
+            setFlash(
+              newPendingTickets.length === 1
+                ? `New order — Table ${first.tableNumber}`
+                : `${newPendingTickets.length} new orders`
+            );
+          } else if (updatedTickets.length > 0) {
+            const first = updatedTickets[0];
+            setFlash(
+              updatedTickets.length === 1
+                ? `Order updated — Table ${first.tableNumber}`
+                : `${updatedTickets.length} orders updated`
+            );
+          }
           window.setTimeout(() => setFlash(null), 4000);
 
           newPendingTickets.forEach((ticket) => {
             if (!printedIds.current.has(ticket._id)) {
               printedIds.current.add(ticket._id);
-              autoPrintOrder(ticket);
+              printedSignatures.current.set(ticket._id, itemsSignature(ticket));
+              autoPrintOrder(ticket, false);
             }
+          });
+
+          updatedTickets.forEach((ticket) => {
+            printedSignatures.current.set(ticket._id, itemsSignature(ticket));
+            autoPrintOrder(ticket, true);
           });
         }
       } else {
         // On the very first load of the board, don't mass-print every ticket
         // that was already sitting there — only mark them as seen/printed so
-        // future genuinely-new tickets trigger the printer correctly.
-        kitchenOrders.forEach((o) => printedIds.current.add(o._id));
+        // future genuinely-new tickets or edits trigger the printer correctly.
+        kitchenOrders.forEach((o) => {
+          printedIds.current.add(o._id);
+          printedSignatures.current.set(o._id, itemsSignature(o));
+        });
       }
 
       knownIds.current = new Set(kitchenOrders.map((o) => o._id));
@@ -543,6 +610,13 @@ export default function KitchenDisplay() {
     const poll = window.setInterval(fetchOrders, POLL_MS);
     return () => window.clearInterval(poll);
   }, [fetchOrders]);
+
+  // Manual reprint — always available from each ticket card, doesn't touch
+  // printedIds/printedSignatures bookkeeping since it's user-initiated, not
+  // part of the new/updated detection.
+  const reprintOrder = useCallback((order: Order) => {
+    autoPrintOrder(order, false);
+  }, []);
 
   // Advancing a ticket sends the full order payload, same shape the existing
   // Orders page uses, so the backend's findByIdAndUpdate + runValidators pass.
@@ -668,6 +742,7 @@ export default function KitchenDisplay() {
               orders={ordersByLane[lane.status] || []}
               now={now}
               onAdvance={advanceOrder}
+              onReprint={reprintOrder}
               updatingId={updatingId}
             />
           ))}
