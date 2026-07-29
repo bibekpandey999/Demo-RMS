@@ -479,24 +479,22 @@ export default function OrdersPage() {
                     <p className="text-[11px] text-gray-500">Table {order.tableNumber}</p>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {isActive && (
-                      <button
-                        onClick={() => openEditModal(order)}
-                        disabled={isUpdating}
-                        className="p-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-50"
-                        title="Add items / edit order"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        STATUS_STYLES[order.orderStatus] || 'bg-gray-50 text-gray-600 border-gray-200'
-                      }`}
-                    >
-                      {order.orderStatus}
-                    </span>
-                  </div>
+  <button
+    onClick={() => openEditModal(order)}
+    disabled={isUpdating}
+    className="p-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-50"
+    title="Add items / edit order"
+  >
+    <Pencil className="h-3.5 w-3.5" />
+  </button>
+  <span
+    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+      STATUS_STYLES[order.orderStatus] || 'bg-gray-50 text-gray-600 border-gray-200'
+    }`}
+  >
+    {order.orderStatus}
+  </span>
+</div>
                 </div>
 
                 {/* Items */}
