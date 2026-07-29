@@ -102,13 +102,13 @@ const { currentRestaurantId, currentRestaurantIdAlt } = useMemo(() => {
   }, [orders, currentRestaurantId, currentRestaurantIdAlt]);
 
   const completedOrders = useMemo(
-    () =>
-      restaurantOrders.filter((o) => {
-        const status = o.orderStatus?.toLowerCase().trim();
-        return status === "completed" || status === "served";
-      }),
-    [restaurantOrders]
-  );
+  () =>
+    restaurantOrders.filter((o) => {
+      const paymentStatus = o.paymentStatus?.toLowerCase().trim();
+      return paymentStatus === "paid";
+    }),
+  [restaurantOrders]
+);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
