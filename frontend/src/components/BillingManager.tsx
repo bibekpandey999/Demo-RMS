@@ -18,7 +18,7 @@ const BILLS_URL = `${API_BASE}/api/bills`;
 
 const getLoggedInPharmacyId = (): string => {
   try {
-    const raw = localStorage.getItem('user');
+    const raw = localStorage.getItem('user'); 
     if (!raw) return '';
     const parsed = JSON.parse(raw);
     return (parsed?.id || parsed?._id) ? String(parsed.id || parsed._id) : '';
