@@ -27,7 +27,7 @@ import PharmacySettings from './components/Setting';
 import OrdersPage from './components/Orders';
 
 // Base URL for the live Express + MongoDB backend
-const API_BASE_URL = 'https://rms-0wk0.onrender.com/api';
+const API_BASE_URL = 'https://demo-rms.onrender.com/api';
 
 /* ------------------------------------------------------------------ */
 /*  Staff role -> page access configuration                            */
