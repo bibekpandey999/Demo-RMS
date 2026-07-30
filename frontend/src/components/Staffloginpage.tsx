@@ -3,9 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, Lock, User2, ShieldCheck, AlertCircle } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
-/*  Role → access configuration                                       */
-/*  Export this map so ProtectedRoute / App.tsx can reuse the same    */
-/*  source of truth instead of hardcoding role strings elsewhere.     */
+/*  Role → access configuration                                        */
+/*  Export this map so ProtectedRoute / App.tsx can reuse the same     */
+/*  source of truth instead of hardcoding role strings elsewhere.      */
 /* ------------------------------------------------------------------ */
 
 export type StaffRole =
@@ -23,7 +23,7 @@ interface RoleConfig {
 }
  
 export const ROLE_ACCESS: Record<StaffRole, RoleConfig> = {
-  Manager: {
+ Manager: {
     label: "Manager",
     description: "Full access including settings",
     pages: ["Dashboard", "Patients", "EMR", "POS", "Inventory", "Staff", "Settings"], 
@@ -106,17 +106,18 @@ const StaffLogin: React.FC = () => {
         body: JSON.stringify({ id: id.trim(), password, pharmacyName }),
       });
 
-      const data = await res.json();
+   const data = await res.json();
 
-      if (!res.ok) {
-        if (res.status === 403) {
-          setError("Your account is deactivated. Only active staff can log in.");
-        } else {
-          setError(data?.message || "Invalid staff ID or password.");
-        }
-        setLoading(false);
-        return;
-      }      
+if (!res.ok) {
+  // Catch the 403 status specifically
+  if (res.status === 403) {
+    setError("Your account is deactivated. Only active staff can log in.");
+  } else {
+    setError(data?.message || "Invalid staff ID or password.");
+  }
+  setLoading(false);
+  return;
+}      
 
       const role = data?.user?.role as StaffRole;
       if (!role || !ROLE_ACCESS[role]) {
@@ -146,66 +147,7 @@ const StaffLogin: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full flex bg-white font-[Inter]">
-      {/* ---------------- Brand / access panel ---------------- */}
-      <div className="hidden md:flex md:w-[42%] flex-col justify-between bg-[#123832] text-[#EFF7F3] px-10 py-12 relative overflow-hidden">
-        <div
-          className="pointer-events-none absolute -right-24 -top-24 w-72 h-72 rounded-full opacity-20"
-          style={{ background: "radial-gradient(circle, #7FE3C6 0%, transparent 70%)" }}
-        />
-        <div>
-          <p className="uppercase tracking-[0.2em] text-xs text-[#7FE3C6] font-[IBM_Plex_Mono,monospace]">
-            Staff Terminal
-          </p>
-          <h1
-            className="mt-3 text-4xl leading-tight font-[Fraunces,serif]"
-            style={{ fontOpticalSizing: "auto" }}
-          >
-            {pharmacyName || "Select a restaurant"}
-          </h1>
-          <p className="mt-4 text-sm text-[#B9D6CC] max-w-xs">
-            Sign in with your staff ID. What you see next depends on your role —
-            not everyone at the counter needs the same keys.
-          </p>
-        </div>
-
-        {/* Signature element: role access keys, one lights up on success */}
-        <div className="space-y-3 relative z-10">
-          {(Object.keys(ROLE_ACCESS) as StaffRole[]).map((roleKey) => {
-            const role = ROLE_ACCESS[roleKey];
-            const isActive = unlockedRole === roleKey;
-            return (
-              <div
-                key={roleKey}
-                className={`flex items-start gap-3 rounded-md border px-4 py-3 transition-all duration-500 ${
-                  isActive
-                    ? "border-[#7FE3C6] bg-[#0F2A2E] shadow-[0_0_0_1px_#7FE3C6]"
-                    : "border-[#2A554C] bg-transparent opacity-70"
-                }`}
-              >
-                <ShieldCheck
-                  size={18}
-                  className={`mt-0.5 shrink-0 ${isActive ? "text-[#7FE3C6]" : "text-[#4C7A6F]"}`}
-                />
-                <div>
-                  <p
-                    className={`text-sm font-medium font-[IBM_Plex_Mono,monospace] ${
-                      isActive ? "text-[#7FE3C6]" : "text-[#DCE6E2]"
-                    }`}
-                  >
-                    {role.label}
-                  </p>
-                  <p className="text-xs text-[#9FC2B7] mt-0.5">{role.pages.join(" · ")}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <p className="text-xs text-[#5C8A7D] relative z-10">
-          Wrong counter? Head back to the pharmacy login to switch accounts.
-        </p>
-      </div>
-
+      
       {/* ---------------- Form panel & Test Credentials container ---------------- */}
       <div className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 py-16 bg-[#F5F2EA] md:bg-white gap-8">
         <form onSubmit={handleSubmit} className="w-full max-w-sm">
@@ -282,7 +224,7 @@ const StaffLogin: React.FC = () => {
           </button>
         </form>
 
-        {/* Staff Credentials Display Boxes */}
+        {/* Staff Credentials Display Boxes - Properly Nested Inside Parent */}
         <div className="w-full max-w-xs space-y-3">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center mb-2">Test Staff Credentials</p>
           
