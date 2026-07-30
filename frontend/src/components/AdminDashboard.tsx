@@ -87,7 +87,7 @@ export default function AdminDashboard({ user, lang, onLogout }: AdminDashboardP
   const [formLocation, setFormLocation] = useState('');
   const [formPanOrVat, setFormPanOrVat] = useState('');
 
-  const BACKEND_URL = 'https://rms-0wk0.onrender.com';
+  const BACKEND_URL = ' https://demo-rms.onrender.com';
 
   const t = {
     en: {

@@ -17,7 +17,7 @@ import {
 // CONFIG
 // ==========================================
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://rms-0wk0.onrender.com';
+const API_BASE = import.meta.env.VITE_API_URL || ' https://demo-rms.onrender.com';
 const MENU_URL = `${API_BASE}/api/menu`;       // <-- adjust to your actual menu-items endpoint
 const ORDERS_URL = `${API_BASE}/api/orders`;   // matches your index.js routes
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { X, Printer, Receipt } from "lucide-react";
 
-const API_BASE_URL = 'https://rms-0wk0.onrender.com/api';
+const API_BASE_URL = ' https://demo-rms.onrender.com/api';
 
 interface OrderItem {
   itemName: string;

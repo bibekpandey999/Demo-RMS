@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_BASE = "https://rms-0wk0.onrender.com";
+const API_BASE = " https://demo-rms.onrender.com";
 
 export default function PharmacySettings() {
   const [user, setUser] = useState(null);

@@ -13,7 +13,7 @@ import {
 import { Sale, Patient } from '../types';
 import { TRANSLATIONS } from '../translations';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://rms-0wk0.onrender.com';
+const API_BASE = import.meta.env.VITE_API_URL || ' https://demo-rms.onrender.com';
 const BILLS_URL = `${API_BASE}/api/bills`;
 
 const getLoggedInPharmacyId = (): string => {

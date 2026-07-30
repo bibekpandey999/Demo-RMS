@@ -9,7 +9,7 @@ import {
 // CONFIG
 // ==========================================
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://rms-0wk0.onrender.com';
+const API_BASE = import.meta.env.VITE_API_URL || ' https://demo-rms.onrender.com';
 const BILLS_URL = `${API_BASE}/api/bills`;
 const ORDERS_URL = `${API_BASE}/api/orders`;
 
