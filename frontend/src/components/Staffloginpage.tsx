@@ -282,6 +282,48 @@ if (!res.ok) {
             ← Back to Restaurant login
           </button>
         </form>
+
+        {/* Staff Credentials Display Boxes */}
+        <div className="space-y-3">
+          
+          {/* Manager Credential Box */}
+          <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-3 text-center shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 mb-1">Manager Login</p>
+            <div className="text-xs font-semibold text-slate-700 space-y-0.5">
+              <p style={{ margin: '2px 0' }}>Id = 658675</p>
+              <p style={{ margin: '2px 0' }}>Password = 789567345</p>
+            </div>
+          </div>
+
+          {/* Waiter Credential Box */}
+          <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-3 text-center shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 mb-1">Waiter Login</p>
+            <div className="text-xs font-semibold text-slate-700 space-y-0.5">
+              <p style={{ margin: '2px 0' }}>Id = 987634</p>
+              <p style={{ margin: '2px 0' }}>Password = 97345567</p>
+            </div>
+          </div>
+
+          {/* Cashier Credential Box */}
+          <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-3 text-center shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 mb-1">Cashier Login</p>
+            <div className="text-xs font-semibold text-slate-700 space-y-0.5">
+              <p style={{ margin: '2px 0' }}>Id = 90347634</p>
+              <p style={{ margin: '2px 0' }}>Password = 956793490</p>
+            </div>
+          </div>
+
+          {/* Kitchen Credential Box */}
+          <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-3 text-center shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 mb-1">Kitchen Login</p>
+            <div className="text-xs font-semibold text-slate-700 space-y-0.5">
+              <p style={{ margin: '2px 0' }}>Id = 456878</p>
+              <p style={{ margin: '2px 0' }}>Password = 3457808</p>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
   );
