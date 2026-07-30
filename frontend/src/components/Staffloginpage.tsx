@@ -146,10 +146,10 @@ if (!res.ok) {
   };
 
   return (
-    <div className="min-h-screen w-full flex bg-white font-[Inter]">
+<div className="min-h-screen w-full max-w-full overflow-x-hidden flex bg-white font-[Inter]">
       
       {/* ---------------- Form panel & Test Credentials container ---------------- */}
-      <div className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 py-16 bg-[#F5F2EA] md:bg-white gap-8">
+   <div className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 py-16 bg-[#F5F2EA] md:bg-white gap-8 max-w-6xl mx-auto w-full">
         <form onSubmit={handleSubmit} className="w-full max-w-sm">
           <div className="md:hidden mb-8">
             <p className="uppercase tracking-[0.2em] text-xs text-[#4C7A6F] font-[IBM_Plex_Mono,monospace]">
