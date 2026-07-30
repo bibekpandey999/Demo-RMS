@@ -220,10 +220,10 @@ export default function LoginScreen({ lang, setLang, onLoginSuccess }: LoginScre
         </div>
 
 
-<div style="text-align: center;">
-  <p style="margin: 4px 0;">Restaurant Name = Test</p>
-  <p style="margin: 4px 0;">Id = 321</p>
-  <p style="margin: 4px 0;">Password = 321</p>
+<div className="text-align: center;">
+  <p className="margin: 4px 0;">Restaurant Name = Test</p>
+  <p className="margin: 4px 0;">Id = 321</p>
+  <p className="margin: 4px 0;">Password = 321</p>
 </div>
 
 
