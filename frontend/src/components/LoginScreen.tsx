@@ -218,6 +218,14 @@ export default function LoginScreen({ lang, setLang, onLoginSuccess }: LoginScre
           <p className="text-[10px] text-slate-400">{t.unauthorizedTip}</p>
           <p className="text-[9px] font-bold uppercase tracking-wider">{t.envNote}</p>
         </div>
+
+            <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+  <div style="text-align: center; font-family: sans-serif;">
+    <p>Restaurant Name = Test</p>
+    <p>Id = 321</p>
+    <p>Password = 321</p>
+  </div>
+</div>
       </div>
     </div>
   );
