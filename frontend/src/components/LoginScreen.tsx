@@ -219,12 +219,15 @@ export default function LoginScreen({ lang, setLang, onLoginSuccess }: LoginScre
           <p className="text-[9px] font-bold uppercase tracking-wider">{t.envNote}</p>
         </div>
 
-
-<div className="text-align: center;">
-  <p className="margin: 4px 0;">Restaurant Name = Test</p>
-  <p className="margin: 4px 0;">Id = 321</p>
-  <p className="margin: 4px 0;">Password = 321</p>
-</div>
+{/* Test Credentials Display Box */}
+        <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-4 text-center shadow-sm">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Test Credentials</p>
+          <div className="text-xs font-semibold text-slate-700 space-y-1">
+            <p style={{ margin: '4px 0' }}>Restaurant Name = Test</p>
+            <p style={{ margin: '4px 0' }}>Id = 321</p>
+            <p style={{ margin: '4px 0' }}>Password = 321</p>
+          </div>
+        </div>
 
 
       </div>
