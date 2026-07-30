@@ -3,9 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, Lock, User2, ShieldCheck, AlertCircle } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
-/*  Role → access configuration                                        */
-/*  Export this map so ProtectedRoute / App.tsx can reuse the same     */
-/*  source of truth instead of hardcoding role strings elsewhere.      */
+/*  Role → access configuration                                       */
+/*  Export this map so ProtectedRoute / App.tsx can reuse the same    */
+/*  source of truth instead of hardcoding role strings elsewhere.     */
 /* ------------------------------------------------------------------ */
 
 export type StaffRole =
@@ -23,7 +23,7 @@ interface RoleConfig {
 }
  
 export const ROLE_ACCESS: Record<StaffRole, RoleConfig> = {
- Manager: {
+  Manager: {
     label: "Manager",
     description: "Full access including settings",
     pages: ["Dashboard", "Patients", "EMR", "POS", "Inventory", "Staff", "Settings"], 
@@ -106,18 +106,17 @@ const StaffLogin: React.FC = () => {
         body: JSON.stringify({ id: id.trim(), password, pharmacyName }),
       });
 
-   const data = await res.json();
+      const data = await res.json();
 
-if (!res.ok) {
-  // Catch the 403 status specifically
-  if (res.status === 403) {
-    setError("Your account is deactivated. Only active staff can log in.");
-  } else {
-    setError(data?.message || "Invalid staff ID or password.");
-  }
-  setLoading(false);
-  return;
-}      
+      if (!res.ok) {
+        if (res.status === 403) {
+          setError("Your account is deactivated. Only active staff can log in.");
+        } else {
+          setError(data?.message || "Invalid staff ID or password.");
+        }
+        setLoading(false);
+        return;
+      }      
 
       const role = data?.user?.role as StaffRole;
       if (!role || !ROLE_ACCESS[role]) {
@@ -207,8 +206,8 @@ if (!res.ok) {
         </p>
       </div>
 
-      {/* ---------------- Form panel ---------------- */}
-      <div className="flex-1 flex items-center justify-center px-6 py-16 bg-[#F5F2EA] md:bg-white">
+      {/* ---------------- Form panel & Test Credentials container ---------------- */}
+      <div className="flex-1 flex flex-col md:flex-row items-center justify-center px-6 py-16 bg-[#F5F2EA] md:bg-white gap-8">
         <form onSubmit={handleSubmit} className="w-full max-w-sm">
           <div className="md:hidden mb-8">
             <p className="uppercase tracking-[0.2em] text-xs text-[#4C7A6F] font-[IBM_Plex_Mono,monospace]">
@@ -237,13 +236,13 @@ if (!res.ok) {
           <div className="mb-5 flex items-center gap-2 rounded-md border border-[#DCE6E2] focus-within:border-[#123832] focus-within:ring-1 focus-within:ring-[#123832] px-3 py-2.5 bg-white transition-colors">
             <User2 size={16} className="text-[#5B6B66]" />
             <input
-  type="text"
-  value={id}
-  onChange={(e) => setId(e.target.value)}
-  placeholder="Enter ID"
-  className="w-full outline-none text-sm text-[#1C2B28] placeholder:text-[#A9B6B1] font-[IBM_Plex_Mono,monospace]"
-  autoComplete="username"
-/>
+              type="text"
+              value={id}
+              onChange={(e) => setId(e.target.value)}
+              placeholder="Enter ID"
+              className="w-full outline-none text-sm text-[#1C2B28] placeholder:text-[#A9B6B1] font-[IBM_Plex_Mono,monospace]"
+              autoComplete="username"
+            />
           </div>
 
           <label className="block text-xs font-medium tracking-wide text-[#1C2B28] mb-1.5">
@@ -282,13 +281,11 @@ if (!res.ok) {
             ← Back to Restaurant login
           </button>
         </form>
-      </div>
 
-{/* Staff Credentials Display Boxes */}
+        {/* Staff Credentials Display Boxes */}
         <div className="w-full max-w-xs space-y-3">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center mb-2">Test Staff Credentials</p>
           
-          {/* Manager Credential Box */}
           <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-3 text-center shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 mb-1">Manager Login</p>
             <div className="text-xs font-semibold text-slate-700 space-y-0.5">
@@ -297,7 +294,6 @@ if (!res.ok) {
             </div>
           </div>
 
-          {/* Waiter Credential Box */}
           <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-3 text-center shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 mb-1">Waiter Login</p>
             <div className="text-xs font-semibold text-slate-700 space-y-0.5">
@@ -306,7 +302,6 @@ if (!res.ok) {
             </div>
           </div>
 
-          {/* Cashier Credential Box */}
           <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-3 text-center shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 mb-1">Cashier Login</p>
             <div className="text-xs font-semibold text-slate-700 space-y-0.5">
@@ -315,7 +310,6 @@ if (!res.ok) {
             </div>
           </div>
 
-          {/* Kitchen Credential Box */}
           <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-3 text-center shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 mb-1">Kitchen Login</p>
             <div className="text-xs font-semibold text-slate-700 space-y-0.5">
@@ -323,11 +317,9 @@ if (!res.ok) {
               <p style={{ margin: '2px 0' }}>Password = 3457808</p>
             </div>
           </div>
-
         </div>
-
       </div>
-
+    </div>
   );
 };
 
