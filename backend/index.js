@@ -21,7 +21,7 @@ app.set('trust proxy', 1);
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://rms-pa7b9fs27-ramitnpns-projects.vercel.app"
+  "https://demo-ky1ozxxy5-ramitnpns-projects.vercel.app/"
 ];
 // CORS and JSON parsing set up immediately, not gated on DB connection
 app.use(cors({
