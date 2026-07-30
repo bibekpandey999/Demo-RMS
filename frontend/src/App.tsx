@@ -106,6 +106,20 @@ function StaffLoginGate({
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showTestCreds, setShowTestCreds] = useState(false);
+
+  const TEST_CREDENTIALS: { role: string; id: string; password: string }[] = [
+    { role: 'Manager', id: '658675', password: '789567345' },
+    { role: 'Waiter', id: '987634', password: '97345567' },
+    { role: 'Cashier', id: '90347634', password: '956793490' },
+    { role: 'Kitchen', id: '456878', password: '3457808' },
+  ];
+
+  const fillCredential = (testId: string, testPassword: string) => {
+    setId(testId);
+    setPassword(testPassword);
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,11 +166,6 @@ function StaffLoginGate({
         return;
       }
 
-      // Defensive check: your backend currently looks up staff by ID alone
-      // (it doesn't filter by pharmacyName), so a staff ID from a different
-      // restaurant could otherwise slip through here. Block it client-side
-      // until the /api/staff/login route is updated to query by
-      // { id, pharmacyName } together.
       if (returnedPharmacy && returnedPharmacy !== pharmacyName) {
         setError(
           lang === 'en'
@@ -262,46 +271,49 @@ function StaffLoginGate({
         >
           {lang === 'en' ? '← Back to restaurant login' : '← रेस्टुरेन्ट लगइनमा फर्कनुहोस्'}
         </button>
-      </div>
 
-       <div className="mt-6 pt-5 border-t border-gray-100 space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 text-center mb-2">
-            Test Staff Credentials
-          </p>
+        {/* ---- Test credentials: collapsed by default, expandable ---- */}
+        <div className="mt-6 pt-5 border-t border-dashed border-gray-200">
+          <button
+            type="button"
+            onClick={() => setShowTestCreds((v) => !v)}
+            className="w-full flex items-center justify-between text-left cursor-pointer group"
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 group-hover:text-gray-600 transition-colors">
+              {lang === 'en' ? 'Test staff credentials' : 'परीक्षण कर्मचारी विवरण'}
+            </span>
+            <ChevronRight
+              className={`h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 transition-transform ${
+                showTestCreds ? 'rotate-90' : ''
+              }`}
+            />
+          </button>
 
-          <div className="bg-gray-50 border border-gray-150 rounded-xl p-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Manager Login</p>
-            <div className="text-[11px] font-semibold text-gray-700 leading-tight">
-              <p>Id = 658675</p>
-              <p>Password = 789567345</p>
+          {showTestCreds && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {TEST_CREDENTIALS.map((cred) => (
+                <button
+                  key={cred.role}
+                  type="button"
+                  onClick={() => fillCredential(cred.id, cred.password)}
+                  className="text-left rounded-lg border border-gray-150 bg-gray-50 hover:bg-teal-50 hover:border-teal-200 px-2.5 py-2 transition-colors cursor-pointer"
+                >
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-1">
+                    {cred.role}
+                  </p>
+                  <p className="text-[10px] font-mono text-gray-700 leading-snug truncate">
+                    {cred.id}
+                  </p>
+                  <p className="text-[10px] font-mono text-gray-400 leading-snug truncate">
+                    {cred.password}
+                  </p>
+                </button>
+              ))}
             </div>
-          </div>
-
-          <div className="bg-gray-50 border border-gray-150 rounded-xl p-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Waiter Login</p>
-            <div className="text-[11px] font-semibold text-gray-700 leading-tight">
-              <p>Id = 987634</p>
-              <p>Password = 97345567</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 border border-gray-150 rounded-xl p-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Cashier Login</p>
-            <div className="text-[11px] font-semibold text-gray-700 leading-tight">
-              <p>Id = 90347634</p>
-              <p>Password = 956793490</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 border border-gray-150 rounded-xl p-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Kitchen Login</p>
-            <div className="text-[11px] font-semibold text-gray-700 leading-tight">
-              <p>Id = 456878</p>
-              <p>Password = 3457808</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
+    </div>
   );
 }
 
