@@ -254,19 +254,55 @@ function StaffLoginGate({
               : lang === 'en' ? 'Sign in' : 'लगइन गर्नुहोस्'}
           </button>
         </form>
-
-        <button
+<button
           type="button"
           onClick={onBackToPharmacyLogin}
           className="w-full text-center text-xs text-gray-500 mt-5 hover:text-teal-700 transition-colors cursor-pointer"
         >
           {lang === 'en' ? '← Back to restaurant login' : '← रेस्टुरेन्ट लगइनमा फर्कनुहोस्'}
         </button>
+
+        <div className="mt-6 pt-5 border-t border-gray-100 space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 text-center mb-2">
+            Test Staff Credentials
+          </p>
+
+          <div className="bg-gray-50 border border-gray-150 rounded-xl p-2.5 text-center">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Manager Login</p>
+            <div className="text-[11px] font-semibold text-gray-700 leading-tight">
+              <p>Id = 658675</p>
+              <p>Password = 789567345</p>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-150 rounded-xl p-2.5 text-center">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Waiter Login</p>
+            <div className="text-[11px] font-semibold text-gray-700 leading-tight">
+              <p>Id = 987634</p>
+              <p>Password = 97345567</p>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-150 rounded-xl p-2.5 text-center">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Cashier Login</p>
+            <div className="text-[11px] font-semibold text-gray-700 leading-tight">
+              <p>Id = 90347634</p>
+              <p>Password = 956793490</p>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-150 rounded-xl p-2.5 text-center">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mb-0.5">Kitchen Login</p>
+            <div className="text-[11px] font-semibold text-gray-700 leading-tight">
+              <p>Id = 456878</p>
+              <p>Password = 3457808</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
 /* ------------------------------------------------------------------ */
 
 export default function App() {
