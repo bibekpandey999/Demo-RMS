@@ -935,60 +935,60 @@ app.delete("/api/staff/:id", async (req, res) => {
     }
 });
 
-// const createDefaultAdmin = async () => {
-//     try {
-//         const existingAdmin = await PharmacyUser.findOne({
-//             isAdmin: true
-//         });
+const createDefaultAdmin = async () => {
+    try {
+        const existingAdmin = await PharmacyUser.findOne({
+            isAdmin: true
+        });
 
-//         if (existingAdmin) {
-//             console.log("✅ Admin account already exists");
-//             return;
-//         }
+        if (existingAdmin) {
+            console.log("✅ Admin account already exists");
+            return;
+        }
 
-//         const admin = new PharmacyUser({
-//             phone: "0000000000",
-//             email: "admin@pharmacy.com",
-//             location: "Admin",
-//             PanOrVat: "",
-//             pharmacyName: "Pharmacy Admin",
-//             id: "123",
-//             password: "123",
-//             isActive: true,
-//             isAdmin: true
-//         });
+        const admin = new PharmacyUser({
+            phone: "0000000000",
+            email: "admin@pharmacy.com",
+            location: "Admin",
+            PanOrVat: "",
+            pharmacyName: "Pharmacy Admin",
+            id: "123",
+            password: "123",
+            isActive: true,
+            isAdmin: true
+        });
 
-//         await admin.save();
+        await admin.save();
 
-//         console.log("✅ Default Pharmacy Admin created successfully");
-//         console.log("Admin ID: 123");
-//         console.log("Admin Password: 123");
+        console.log("✅ Default Pharmacy Admin created successfully");
+        console.log("Admin ID: 123");
+        console.log("Admin Password: 123");
 
-//     } catch (error) {
-//         console.error("❌ Admin creation failed:", error.message);
-//     }
-// };
+    } catch (error) {
+        console.error("❌ Admin creation failed:", error.message);
+    }
+};
 
 
 
 // Start DB connection before starting server
-conectDb().then(() => {
-  app.listen(Number(PORT), "0.0.0.0", () => {
-    console.log(`Pharmacy full-stack server running on port ${PORT}`);
-  });
-}).catch((err) => {
-  console.error("❌ Critical System Halt: Server could not start because Database connection failed.");
-});
-
-
-// conectDb().then(async () => {
-
-//   await createDefaultAdmin();
-
+// conectDb().then(() => {
 //   app.listen(Number(PORT), "0.0.0.0", () => {
 //     console.log(`Pharmacy full-stack server running on port ${PORT}`);
 //   });
-
 // }).catch((err) => {
-//   console.error("❌ Critical System Halt:", err);
+//   console.error("❌ Critical System Halt: Server could not start because Database connection failed.");
 // });
+
+
+conectDb().then(async () => {
+
+  await createDefaultAdmin();
+
+  app.listen(Number(PORT), "0.0.0.0", () => {
+    console.log(`Pharmacy full-stack server running on port ${PORT}`);
+  });
+
+}).catch((err) => {
+  console.error("❌ Critical System Halt:", err);
+});
