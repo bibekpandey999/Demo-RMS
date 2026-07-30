@@ -56,7 +56,7 @@ export const ROLE_ACCESS: Record<StaffRole, RoleConfig> = {
   },
 };
 
-const API_URL = process.env.REACT_APP_API_URL || " https://demo-rms.onrender.com";
+const API_URL = process.env.REACT_APP_API_URL || "https://rms-0wk0.onrender.com";
 
 /* ------------------------------------------------------------------ */
 
@@ -237,13 +237,13 @@ if (!res.ok) {
           <div className="mb-5 flex items-center gap-2 rounded-md border border-[#DCE6E2] focus-within:border-[#123832] focus-within:ring-1 focus-within:ring-[#123832] px-3 py-2.5 bg-white transition-colors">
             <User2 size={16} className="text-[#5B6B66]" />
             <input
-              type="text"
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-              placeholder="Enter ID
-              className="w-full outline-none text-sm text-[#1C2B28] placeholder:text-[#A9B6B1] font-[IBM_Plex_Mono,monospace]"
-              autoComplete="username"
-            />
+  type="text"
+  value={id}
+  onChange={(e) => setId(e.target.value)}
+  placeholder="Enter ID"
+  className="w-full outline-none text-sm text-[#1C2B28] placeholder:text-[#A9B6B1] font-[IBM_Plex_Mono,monospace]"
+  autoComplete="username"
+/>
           </div>
 
           <label className="block text-xs font-medium tracking-wide text-[#1C2B28] mb-1.5">
@@ -282,9 +282,11 @@ if (!res.ok) {
             ← Back to Restaurant login
           </button>
         </form>
+      </div>
 
-        {/* Staff Credentials Display Boxes */}
-        <div className="space-y-3">
+{/* Staff Credentials Display Boxes */}
+        <div className="w-full max-w-xs space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center mb-2">Test Staff Credentials</p>
           
           {/* Manager Credential Box */}
           <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-3 text-center shadow-sm">
@@ -325,7 +327,7 @@ if (!res.ok) {
         </div>
 
       </div>
-    </div>
+
   );
 };
 
