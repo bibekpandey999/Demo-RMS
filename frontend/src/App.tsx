@@ -27,7 +27,7 @@ import PharmacySettings from './components/Setting';
 import OrdersPage from './components/Orders';
 
 // Base URL for the live Express + MongoDB backend
-const API_BASE_URL = ' https://demo-rms.onrender.com/api';
+const API_BASE_URL = 'https://rms-0wk0.onrender.com/api';
 
 /* ------------------------------------------------------------------ */
 /*  Staff role -> page access configuration                            */
@@ -254,15 +254,17 @@ function StaffLoginGate({
               : lang === 'en' ? 'Sign in' : 'लगइन गर्नुहोस्'}
           </button>
         </form>
-<button
+
+        <button
           type="button"
           onClick={onBackToPharmacyLogin}
           className="w-full text-center text-xs text-gray-500 mt-5 hover:text-teal-700 transition-colors cursor-pointer"
         >
           {lang === 'en' ? '← Back to restaurant login' : '← रेस्टुरेन्ट लगइनमा फर्कनुहोस्'}
         </button>
+      </div>
 
-        <div className="mt-6 pt-5 border-t border-gray-100 space-y-2">
+       <div className="mt-6 pt-5 border-t border-gray-100 space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 text-center mb-2">
             Test Staff Credentials
           </p>
@@ -300,9 +302,9 @@ function StaffLoginGate({
           </div>
         </div>
       </div>
-    </div>
   );
 }
+
 /* ------------------------------------------------------------------ */
 
 export default function App() {
