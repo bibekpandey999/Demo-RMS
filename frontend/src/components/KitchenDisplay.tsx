@@ -150,9 +150,10 @@ function buildTicketHtml(order: Order, isUpdate: boolean = false): string {
       (item) => `
         <tr>
           <td class="qty">${escapeHtml(String(item.quantity))}×</td>
-          <td class="name">${escapeHtml(item.itemName)}${
-        item.description ? `<div class="desc">${escapeHtml(item.description)}</div>` : ''
-      }</td>
+          <td class="name">
+            ${escapeHtml(item.itemName)}
+            ${item.description ? `<div class="desc">${escapeHtml(item.description)}</div>` : ''}
+          </td>
         </tr>`
     )
     .join('');
@@ -163,56 +164,94 @@ function buildTicketHtml(order: Order, isUpdate: boolean = false): string {
 <meta charset="utf-8" />
 <title>Kitchen Ticket</title>
 <style>
-  @page { size: 80mm auto; margin: 4mm; }
-  * { box-sizing: border-box; }
+  @page { size: 80mm auto; margin: 0; }
+  * { 
+    box-sizing: border-box; 
+    -webkit-print-color-adjust: exact; 
+  }
   body {
-    font-family: 'Courier New', monospace;
+    font-family: 'Courier New', Courier, monospace;
     width: 72mm;
-    margin: 0;
-    padding: 0;
-    color: #000;
+    margin: 0 auto;
+    padding: 4mm 0;
+    color: #000000;
+    background: #ffffff;
+    font-weight: 900; /* Forces maximum black fill on thermal heads */
   }
   .center { text-align: center; }
   h1 {
-    font-size: 15px;
-    margin: 0 0 2px;
+    font-size: 18px;
+    font-weight: 900;
+    margin: 0 0 4px;
     letter-spacing: 1px;
   }
   .update-flag {
     display: inline-block;
-    font-size: 11px;
-    font-weight: bold;
-    border: 1px solid #000;
-    padding: 1px 6px;
-    margin-bottom: 4px;
-    letter-spacing: 0.5px;
-  }
-  .meta {
-    font-size: 11px;
-    line-height: 1.5;
-    border-bottom: 1px dashed #000;
-    padding-bottom: 6px;
+    font-size: 13px;
+    font-weight: 900;
+    border: 2px solid #000;
+    padding: 2px 8px;
     margin-bottom: 6px;
   }
-  .meta div { display: flex; justify-content: space-between; }
-  .meta span:first-child { font-weight: bold; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
-  td { font-size: 13px; padding: 3px 0; vertical-align: top; }
-  td.qty { width: 32px; font-weight: bold; }
-  td.name { font-weight: bold; }
-  .desc { font-size: 10px; font-weight: normal; color: #333; }
-  .note {
-    font-size: 11px;
-    border-top: 1px dashed #000;
-    padding-top: 6px;
-    margin-top: 4px;
+  .meta {
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.5;
+    border-bottom: 2px solid #000;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
   }
-  .note strong { display: block; margin-bottom: 2px; }
+  .meta-row {
+    display: table;
+    width: 100%;
+  }
+  .meta-label, .meta-val {
+    display: table-cell;
+    padding: 1px 0;
+    font-weight: 900;
+  }
+  .meta-val {
+    text-align: right;
+  }
+  table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-bottom: 8px; 
+  }
+  td { 
+    font-size: 16px; 
+    font-weight: 900; 
+    padding: 4px 0; 
+    vertical-align: top; 
+    color: #000000;
+  }
+  td.qty { 
+    width: 35px; 
+  } 
+  td.name { 
+    font-weight: 900; 
+  }
+  .desc { 
+    font-size: 12px; 
+    font-weight: 900; 
+    color: #000000; 
+    margin-top: 2px;
+  }
+  .note {
+    font-size: 14px;
+    font-weight: 900;
+    border-top: 2px dashed #000;
+    border-bottom: 2px dashed #000;
+    padding: 6px 0;
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
   .footer {
     text-align: center;
-    font-size: 10px;
-    border-top: 1px dashed #000;
-    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 900;
+    border-top: 1px solid #000;
+    margin-top: 10px;
     padding-top: 6px;
   }
 </style>
@@ -223,10 +262,10 @@ function buildTicketHtml(order: Order, isUpdate: boolean = false): string {
     <h1>KITCHEN TICKET</h1>
   </div>
   <div class="meta">
-    <div><span>Table:</span><span>${escapeHtml(order.tableNumber)}</span></div>
-    <div><span>Customer:</span><span>${escapeHtml(order.customerName)}</span></div>
-    <div><span>Order #:</span><span>${escapeHtml(order._id.slice(-6).toUpperCase())}</span></div>
-    <div><span>Placed:</span><span>${escapeHtml(formatTicketDateTime(order.createdAt))}</span></div>
+    <div class="meta-row"><span class="meta-label">Table:</span><span class="meta-val">${escapeHtml(order.tableNumber)}</span></div>
+    <div class="meta-row"><span class="meta-label">Customer:</span><span class="meta-val">${escapeHtml(order.customerName)}</span></div>
+    <div class="meta-row"><span class="meta-label">Order #:</span><span class="meta-val">${escapeHtml(order._id.slice(-6).toUpperCase())}</span></div>
+    <div class="meta-row"><span class="meta-label">Placed:</span><span class="meta-val">${escapeHtml(formatTicketDateTime(order.createdAt))}</span></div>
   </div>
   <table>
     <tbody>
@@ -235,10 +274,10 @@ function buildTicketHtml(order: Order, isUpdate: boolean = false): string {
   </table>
   ${
     order.orderNote
-      ? `<div class="note"><strong>NOTE:</strong>${escapeHtml(order.orderNote)}</div>`
+      ? `<div class="note"><strong>NOTE:</strong> ${escapeHtml(order.orderNote)}</div>`
       : ''
   }
-  <div class="footer">Printed ${escapeHtml(formatTicketDateTime(new Date().toISOString()))}</div>
+  <div class="footer">Printed: ${escapeHtml(formatTicketDateTime(new Date().toISOString()))}</div>
 </body>
 </html>`;
 }
