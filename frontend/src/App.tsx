@@ -174,7 +174,7 @@ function StaffLoginGate({
         );
         setLoading(false);
         return;
-      }
+      } 
 
       setLoading(false);
       onStaffLoginSuccess(role, data.user.id, returnedPharmacy || pharmacyName);
